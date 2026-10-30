@@ -8,24 +8,22 @@ A **working local-only synthetic demo** for a fictional high-school CTE teacher.
 
 Prerequisite: **Node.js 22.13+** (tested on Node 22.16; the built-in `node:sqlite` API is experimental in this Node release).
 
-### Run bundled compiled demo (no dependency installation necessary)
+### Run from a GitHub clone
 
 ```bash
-node dist/server/src/server/server.js
-```
-
-Open **http://127.0.0.1:4173**. The app creates `./data/demo.sqlite` on first launch and seeds the fictional Northstar CTE organization. If you prefer `npm` scripts, use `npm start`.
-
-### Edit the code / rebuild / test
-
-```bash
+git clone https://github.com/trukwava/cadence-curriculum-planner.git
+cd cadence-curriculum-planner
 npm install
 npm run build
 npm test
 npm start
 ```
 
-If rebuilding in a restricted offline environment, supply a local TypeScript 5.8+ compiler and Node type definitions. The supplied ZIP includes *already compiled* server and browser JavaScript, so you can run the demo without installing packages.
+Open **http://127.0.0.1:4173**. On first launch, the application creates `./data/demo.sqlite` and seeds the fictional Northstar CTE organization. The repository tracks source files, not generated builds; run `npm run build` after cloning before using `npm start`.
+
+### Run the separately packaged ZIP
+
+The previously supplied downloadable demo ZIP includes precompiled server and browser JavaScript. From the extracted `curriculum-recovery` directory, run `node dist/server/src/server/server.js` without installing dependencies. If rebuilding in an offline environment, provide TypeScript 5.8+ and Node type definitions.
 
 Optional environment variables are in `.env.example`. Example: `PORT=4180 DB_PATH=./data/my-demo.sqlite npm start`. **Keep HOST set to `127.0.0.1`.** There is no remote-user authentication; do not expose this demo to the public network.
 
