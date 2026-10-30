@@ -34,3 +34,5 @@ Added a 3-allocation two-overlap pure-engine fixture, a persistent seed-scenario
 - HTTP local server health returned `ok: true`, mode `synthetic-demo`.
 - Offline Chromium (local state injection due sandbox blocking localhost page navigation) rendered desktop/mobile weekly views, selected lesson and destination with keyboard-friendly buttons, exercised drag into occupied slot, and displayed the teacher-reviewable two-block proposal with accepted/proposed toggle; zero uncaught JavaScript errors.
 - Full HTTP browser interaction against a running server remains unverified due browser sandbox restrictions. The localhost HTTP API is tested independently in Node.
+
+- Static module import audit found missing GET `/dist/week.js` route. Corrected the allowlist and extended the HTTP startup test to fetch the new module successfully; this prevents the weekly view from failing in an actual browser.
