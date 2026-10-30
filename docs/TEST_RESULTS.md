@@ -36,3 +36,9 @@ Added a 3-allocation two-overlap pure-engine fixture, a persistent seed-scenario
 - Full HTTP browser interaction against a running server remains unverified due browser sandbox restrictions. The localhost HTTP API is tested independently in Node.
 
 - Static module import audit found missing GET `/dist/week.js` route. Corrected the allowlist and extended the HTTP startup test to fetch the new module successfully; this prevents the weekly view from failing in an actual browser.
+
+## v0.5.1 additional calendar checks
+
+- 36 local automated tests pass. A midweek-start alternating schedule correctly resets parity at Monday, not seven days after the first day.
+- A seeded sweep of 100 overlapping closure sets compares exact remaining instructional minutes and exclusions against an independent minute-by-minute oracle. Duplicate closures do not double-subtract.
+- This patch contains the corrected weekly browser module serving route and its HTTP assertion. GitHub Actions status must be checked separately.
