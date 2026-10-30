@@ -1,0 +1,39 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {mkdtempSync,rmSync} from 'node:fs';
+import {tmpdir} from 'node:os';
+import {join} from 'node:path';
+import {once} from 'node:events';
+import type {AddressInfo} from 'node:net';
+const folder=mkdtempSync(join(tmpdir(),'northstar-http-test-'));
+process.env.NODE_ENV='test';process.env.DB_PATH=join(folder,'integration.sqlite');
+const {app}=await import('../src/server/server.js');
+app.listen(0,'127.0.0.1');await once(app,'listening');
+const port=(app.address() as AddressInfo).port,base=`http://127.0.0.1:${port}`;
+const req=(path:string,options?:RequestInit)=>fetch(base+path,options);
+const post=(path:string,x:unknown)=>req(path,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(x)});
+test('local HTML and compiled JavaScript serve correctly',async()=>{
+ const html=await req('/');assert.equal(html.status,200);assert.match(await html.text(),/Curriculum recovery/);
+ const js=await req('/dist/app.js');assert.equal(js.status,200);assert.match(await js.text(),/Generate recovery alternatives/);
+ assert.match(html.headers.get('content-security-policy')||'',/script-src 'self'/);
+ const jsPath=await req('/../../../../etc/passwd');assert.equal(jsPath.status,404);
+});
+test('HTTP calendar preview is side-effect-free; accepting updates versions and exports',async()=>{
+ const state=await (await req('/api/state')).json() as any;const old=state.sections.find((x:any)=>x.id==='cte-tt').activePlan;
+ const p=await (await post('/api/disruptions/preview',{sectionId:'cte-tt',date:'2026-11-24',start:'10:00',end:'11:15',reason:'Integration fixture'})).json() as any[];
+ assert.equal(p.length,2);assert.equal(p.find(x=>x.strategy==='retain').result.feasible,false);assert.equal(p.find(x=>x.strategy==='defer').result.feasible,true);
+ const before=await (await req('/api/state')).json() as any;assert.equal(before.sections[1].activePlan.id,old.id);
+ const infeasible=await post(`/api/proposals/${p.find(x=>x.strategy==='retain').id}/accept`,{});assert.equal(infeasible.status,400);
+ const good=p.find(x=>x.strategy==='defer');const ok=await post(`/api/proposals/${good.id}/accept`,{});assert.equal(ok.status,200);
+ const after=await (await req('/api/state')).json() as any;const active=after.sections.find((x:any)=>x.id==='cte-tt').activePlan;
+ assert.equal(active.versionNo,old.versionNo+1);assert.equal(after.sections.find((x:any)=>x.id==='cte-tt').disruptions.length,1);
+ const csv=await (await req('/api/export/cte-tt.csv')).text();const lines=csv.trim().split('\r\n');assert.equal(lines.length-1,active.snapshot.result.allocations.length);assert.ok(lines.some(line=>line.startsWith('2026-11-19')));
+ const ics=await (await req('/api/export/cte-tt.ics')).text();assert.equal((ics.match(/BEGIN:VEVENT/g)||[]).length,active.snapshot.result.allocations.length);assert.match(ics,/DTSTART:20261119T/);assert.match(ics,/X-WR-TIMEZONE:America\/New_York/);
+ assert.ok(active.snapshot.result.allocations.every((a:any)=>csv.includes(`${a.date},${a.start},${a.end}`)));
+});
+test('HTTP rejects cross-site mutation requests and invalid input',async()=>{
+ const denied=await req('/api/reset',{method:'POST',headers:{Origin:'https://untrusted.example'}});assert.equal(denied.status,400);
+ const bad=await post('/api/calendar/exception',{sectionId:'cte-tt',date:'2030-01-01',kind:'holiday',reason:'Out of term'});assert.equal(bad.status,400);
+ const state=await (await req('/api/state')).json() as any;assert.equal(state.sections.length,2);
+});
+test('shutdown test server',async()=>{await new Promise<void>((resolve,reject)=>app.close(err=>err?reject(err):resolve()));rmSync(folder,{recursive:true,force:true});});

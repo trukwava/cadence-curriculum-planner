@@ -1,0 +1,26 @@
+Date,Start (school local),End (school local),Timezone,Section,Lesson,Minutes,Version
+2026-10-20,10:00,10:40,America/New_York,cte-tt,Studio orientation,40,1
+2026-10-20,10:40,11:15,America/New_York,cte-tt,Safety workflows,35,1
+2026-10-22,10:00,10:05,America/New_York,cte-tt,Safety workflows,5,1
+2026-10-22,10:05,10:45,America/New_York,cte-tt,Design constraints,40,1
+2026-10-22,10:45,11:15,America/New_York,cte-tt,Systems sketch,30,1
+2026-10-27,10:00,10:10,America/New_York,cte-tt,Systems sketch,10,1
+2026-10-27,10:10,10:50,America/New_York,cte-tt,Structured data,40,1
+2026-10-27,10:50,11:15,America/New_York,cte-tt,Data validation,25,1
+2026-10-29,10:00,10:15,America/New_York,cte-tt,Data validation,15,1
+2026-10-29,10:15,10:55,America/New_York,cte-tt,Workflow mapping,40,1
+2026-10-29,10:55,11:15,America/New_York,cte-tt,Prototype planning,20,1
+2026-11-05,10:00,10:20,America/New_York,cte-tt,Prototype planning,20,1
+2026-11-05,10:20,11:00,America/New_York,cte-tt,Iteration and feedback,40,1
+2026-11-05,11:00,11:15,America/New_York,cte-tt,Testing assumptions,15,1
+2026-11-10,10:00,10:25,America/New_York,cte-tt,Testing assumptions,25,1
+2026-11-10,10:25,11:05,America/New_York,cte-tt,Documentation,40,1
+2026-11-10,11:05,11:15,America/New_York,cte-tt,Communicating findings,10,1
+2026-11-17,10:00,10:30,America/New_York,cte-tt,Communicating findings,30,1
+2026-11-17,10:30,11:10,America/New_York,cte-tt,Project rehearsal,40,1
+2026-11-19,10:25,11:15,America/New_York,cte-tt,Fixed practical assessment,50,1
+2026-11-24,10:00,10:35,America/New_York,cte-tt,Capstone refinement,35,1
+2026-11-24,10:35,11:10,America/New_York,cte-tt,Presentation and retrospective,35,1
+2026-11-24,11:10,11:15,America/New_York,cte-tt,Optional portfolio polish,5,1
+2026-11-26,10:00,10:35,America/New_York,cte-tt,Optional portfolio polish,35,1
+2026-11-26,10:35,11:00,America/New_York,cte-tt,Optional peer showcase,25,1

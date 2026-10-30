@@ -1,0 +1,208 @@
+BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//Curriculum Recovery//Synthetic Demo//EN
+CALSCALE:GREGORIAN
+METHOD:PUBLISH
+X-WR-CALNAME:cte-tt curriculum plan
+X-WR-TIMEZONE:America/New_York
+BEGIN:VEVENT
+UID:b2ee90f8-16b7-4719-8ae6-366034d48d0e-lesson-01@cte-tt:2026-10-20:regular:600@curriculum-recovery.local
+DTSTAMP:20261029T195645Z
+DTSTART:20261020T100000
+DTEND:20261020T104000
+SUMMARY:Studio orientation
+DESCRIPTION:Synthetic demo\; version 1\; school timezone America/New_York. Times are floating local wall-clock times.
+END:VEVENT
+BEGIN:VEVENT
+UID:b2ee90f8-16b7-4719-8ae6-366034d48d0e-lesson-02@cte-tt:2026-10-20:regular:640@curriculum-recovery.local
+DTSTAMP:20261029T195645Z
+DTSTART:20261020T104000
+DTEND:20261020T111500
+SUMMARY:Safety workflows
+DESCRIPTION:Synthetic demo\; version 1\; school timezone America/New_York. Times are floating local wall-clock times.
+END:VEVENT
+BEGIN:VEVENT
+UID:b2ee90f8-16b7-4719-8ae6-366034d48d0e-lesson-02@cte-tt:2026-10-22:regular:600@curriculum-recovery.local
+DTSTAMP:20261029T195645Z
+DTSTART:20261022T100000
+DTEND:20261022T100500
+SUMMARY:Safety workflows
+DESCRIPTION:Synthetic demo\; version 1\; school timezone America/New_York. Times are floating local wall-clock times.
+END:VEVENT
+BEGIN:VEVENT
+UID:b2ee90f8-16b7-4719-8ae6-366034d48d0e-lesson-03@cte-tt:2026-10-22:regular:605@curriculum-recovery.local
+DTSTAMP:20261029T195645Z
+DTSTART:20261022T100500
+DTEND:20261022T104500
+SUMMARY:Design constraints
+DESCRIPTION:Synthetic demo\; version 1\; school timezone America/New_York. Times are floating local wall-clock times.
+END:VEVENT
+BEGIN:VEVENT
+UID:b2ee90f8-16b7-4719-8ae6-366034d48d0e-lesson-04@cte-tt:2026-10-22:regular:645@curriculum-recovery.local
+DTSTAMP:20261029T195645Z
+DTSTART:20261022T104500
+DTEND:20261022T111500
+SUMMARY:Systems sketch
+DESCRIPTION:Synthetic demo\; version 1\; school timezone America/New_York. Times are floating local wall-clock times.
+END:VEVENT
+BEGIN:VEVENT
+UID:b2ee90f8-16b7-4719-8ae6-366034d48d0e-lesson-04@cte-tt:2026-10-27:regular:600@curriculum-recovery.local
+DTSTAMP:20261029T195645Z
+DTSTART:20261027T100000
+DTEND:20261027T101000
+SUMMARY:Systems sketch
+DESCRIPTION:Synthetic demo\; version 1\; school timezone America/New_York. Times are floating local wall-clock times.
+END:VEVENT
+BEGIN:VEVENT
+UID:b2ee90f8-16b7-4719-8ae6-366034d48d0e-lesson-05@cte-tt:2026-10-27:regular:610@curriculum-recovery.local
+DTSTAMP:20261029T195645Z
+DTSTART:20261027T101000
+DTEND:20261027T105000
+SUMMARY:Structured data
+DESCRIPTION:Synthetic demo\; version 1\; school timezone America/New_York. Times are floating local wall-clock times.
+END:VEVENT
+BEGIN:VEVENT
+UID:b2ee90f8-16b7-4719-8ae6-366034d48d0e-lesson-06@cte-tt:2026-10-27:regular:650@curriculum-recovery.local
+DTSTAMP:20261029T195645Z
+DTSTART:20261027T105000
+DTEND:20261027T111500
+SUMMARY:Data validation
+DESCRIPTION:Synthetic demo\; version 1\; school timezone America/New_York. Times are floating local wall-clock times.
+END:VEVENT
+BEGIN:VEVENT
+UID:b2ee90f8-16b7-4719-8ae6-366034d48d0e-lesson-06@cte-tt:2026-10-29:regular:600@curriculum-recovery.local
+DTSTAMP:20261029T195645Z
+DTSTART:20261029T100000
+DTEND:20261029T101500
+SUMMARY:Data validation
+DESCRIPTION:Synthetic demo\; version 1\; school timezone America/New_York. Times are floating local wall-clock times.
+END:VEVENT
+BEGIN:VEVENT
+UID:b2ee90f8-16b7-4719-8ae6-366034d48d0e-lesson-07@cte-tt:2026-10-29:regular:615@curriculum-recovery.local
+DTSTAMP:20261029T195645Z
+DTSTART:20261029T101500
+DTEND:20261029T105500
+SUMMARY:Workflow mapping
+DESCRIPTION:Synthetic demo\; version 1\; school timezone America/New_York. Times are floating local wall-clock times.
+END:VEVENT
+BEGIN:VEVENT
+UID:b2ee90f8-16b7-4719-8ae6-366034d48d0e-lesson-08@cte-tt:2026-10-29:regular:655@curriculum-recovery.local
+DTSTAMP:20261029T195645Z
+DTSTART:20261029T105500
+DTEND:20261029T111500
+SUMMARY:Prototype planning
+DESCRIPTION:Synthetic demo\; version 1\; school timezone America/New_York. Times are floating local wall-clock times.
+END:VEVENT
+BEGIN:VEVENT
+UID:b2ee90f8-16b7-4719-8ae6-366034d48d0e-lesson-08@cte-tt:2026-11-05:regular:600@curriculum-recovery.local
+DTSTAMP:20261029T195645Z
+DTSTART:20261105T100000
+DTEND:20261105T102000
+SUMMARY:Prototype planning
+DESCRIPTION:Synthetic demo\; version 1\; school timezone America/New_York. Times are floating local wall-clock times.
+END:VEVENT
+BEGIN:VEVENT
+UID:b2ee90f8-16b7-4719-8ae6-366034d48d0e-lesson-09@cte-tt:2026-11-05:regular:620@curriculum-recovery.local
+DTSTAMP:20261029T195645Z
+DTSTART:20261105T102000
+DTEND:20261105T110000
+SUMMARY:Iteration and feedback
+DESCRIPTION:Synthetic demo\; version 1\; school timezone America/New_York. Times are floating local wall-clock times.
+END:VEVENT
+BEGIN:VEVENT
+UID:b2ee90f8-16b7-4719-8ae6-366034d48d0e-lesson-10@cte-tt:2026-11-05:regular:660@curriculum-recovery.local
+DTSTAMP:20261029T195645Z
+DTSTART:20261105T110000
+DTEND:20261105T111500
+SUMMARY:Testing assumptions
+DESCRIPTION:Synthetic demo\; version 1\; school timezone America/New_York. Times are floating local wall-clock times.
+END:VEVENT
+BEGIN:VEVENT
+UID:b2ee90f8-16b7-4719-8ae6-366034d48d0e-lesson-10@cte-tt:2026-11-10:regular:600@curriculum-recovery.local
+DTSTAMP:20261029T195645Z
+DTSTART:20261110T100000
+DTEND:20261110T102500
+SUMMARY:Testing assumptions
+DESCRIPTION:Synthetic demo\; version 1\; school timezone America/New_York. Times are floating local wall-clock times.
+END:VEVENT
+BEGIN:VEVENT
+UID:b2ee90f8-16b7-4719-8ae6-366034d48d0e-lesson-11@cte-tt:2026-11-10:regular:625@curriculum-recovery.local
+DTSTAMP:20261029T195645Z
+DTSTART:20261110T102500
+DTEND:20261110T110500
+SUMMARY:Documentation
+DESCRIPTION:Synthetic demo\; version 1\; school timezone America/New_York. Times are floating local wall-clock times.
+END:VEVENT
+BEGIN:VEVENT
+UID:b2ee90f8-16b7-4719-8ae6-366034d48d0e-lesson-12@cte-tt:2026-11-10:regular:665@curriculum-recovery.local
+DTSTAMP:20261029T195645Z
+DTSTART:20261110T110500
+DTEND:20261110T111500
+SUMMARY:Communicating findings
+DESCRIPTION:Synthetic demo\; version 1\; school timezone America/New_York. Times are floating local wall-clock times.
+END:VEVENT
+BEGIN:VEVENT
+UID:b2ee90f8-16b7-4719-8ae6-366034d48d0e-lesson-12@cte-tt:2026-11-17:regular:600@curriculum-recovery.local
+DTSTAMP:20261029T195645Z
+DTSTART:20261117T100000
+DTEND:20261117T103000
+SUMMARY:Communicating findings
+DESCRIPTION:Synthetic demo\; version 1\; school timezone America/New_York. Times are floating local wall-clock times.
+END:VEVENT
+BEGIN:VEVENT
+UID:b2ee90f8-16b7-4719-8ae6-366034d48d0e-lesson-13@cte-tt:2026-11-17:regular:630@curriculum-recovery.local
+DTSTAMP:20261029T195645Z
+DTSTART:20261117T103000
+DTEND:20261117T111000
+SUMMARY:Project rehearsal
+DESCRIPTION:Synthetic demo\; version 1\; school timezone America/New_York. Times are floating local wall-clock times.
+END:VEVENT
+BEGIN:VEVENT
+UID:b2ee90f8-16b7-4719-8ae6-366034d48d0e-lesson-14@cte-tt:2026-11-19:regular:625@curriculum-recovery.local
+DTSTAMP:20261029T195645Z
+DTSTART:20261119T102500
+DTEND:20261119T111500
+SUMMARY:Fixed practical assessment
+DESCRIPTION:Synthetic demo\; version 1\; school timezone America/New_York. Times are floating local wall-clock times.
+END:VEVENT
+BEGIN:VEVENT
+UID:b2ee90f8-16b7-4719-8ae6-366034d48d0e-lesson-15@cte-tt:2026-11-24:regular:600@curriculum-recovery.local
+DTSTAMP:20261029T195645Z
+DTSTART:20261124T100000
+DTEND:20261124T103500
+SUMMARY:Capstone refinement
+DESCRIPTION:Synthetic demo\; version 1\; school timezone America/New_York. Times are floating local wall-clock times.
+END:VEVENT
+BEGIN:VEVENT
+UID:b2ee90f8-16b7-4719-8ae6-366034d48d0e-lesson-16@cte-tt:2026-11-24:regular:635@curriculum-recovery.local
+DTSTAMP:20261029T195645Z
+DTSTART:20261124T103500
+DTEND:20261124T111000
+SUMMARY:Presentation and retrospective
+DESCRIPTION:Synthetic demo\; version 1\; school timezone America/New_York. Times are floating local wall-clock times.
+END:VEVENT
+BEGIN:VEVENT
+UID:b2ee90f8-16b7-4719-8ae6-366034d48d0e-lesson-17@cte-tt:2026-11-24:regular:670@curriculum-recovery.local
+DTSTAMP:20261029T195645Z
+DTSTART:20261124T111000
+DTEND:20261124T111500
+SUMMARY:Optional portfolio polish
+DESCRIPTION:Synthetic demo\; version 1\; school timezone America/New_York. Times are floating local wall-clock times.
+END:VEVENT
+BEGIN:VEVENT
+UID:b2ee90f8-16b7-4719-8ae6-366034d48d0e-lesson-17@cte-tt:2026-11-26:regular:600@curriculum-recovery.local
+DTSTAMP:20261029T195645Z
+DTSTART:20261126T100000
+DTEND:20261126T103500
+SUMMARY:Optional portfolio polish
+DESCRIPTION:Synthetic demo\; version 1\; school timezone America/New_York. Times are floating local wall-clock times.
+END:VEVENT
+BEGIN:VEVENT
+UID:b2ee90f8-16b7-4719-8ae6-366034d48d0e-lesson-18@cte-tt:2026-11-26:regular:635@curriculum-recovery.local
+DTSTAMP:20261029T195645Z
+DTSTART:20261126T103500
+DTEND:20261126T110000
+SUMMARY:Optional peer showcase
+DESCRIPTION:Synthetic demo\; version 1\; school timezone America/New_York. Times are floating local wall-clock times.
+END:VEVENT
+END:VCALENDAR

@@ -1,0 +1,5 @@
+Date,Start,End,Kind,Section,Reason
+2026-10-26,,,holiday,all,Synthetic fall holiday
+2026-11-03,,,holiday,all,Synthetic school closure
+2026-11-12,,,testing,all,Synthetic assessment block
+2026-11-24,10:00,11:15,cancelled,cte-tt,Example unplanned lab cancellation
