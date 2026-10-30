@@ -15,6 +15,7 @@ const post=(path:string,x:unknown)=>req(path,{method:'POST',headers:{'content-ty
 test('local HTML and compiled JavaScript serve correctly',async()=>{
  const html=await req('/');assert.equal(html.status,200);assert.match(await html.text(),/Curriculum recovery/);
  const js=await req('/dist/app.js');assert.equal(js.status,200);assert.match(await js.text(),/Generate recovery alternatives/);
+ const week=await req('/dist/week.js');assert.equal(week.status,200);assert.match(week.headers.get('content-type')||'',/javascript/);assert.match(await week.text(),/snapDropStart/);
  assert.match(html.headers.get('content-security-policy')||'',/script-src 'self'/);
  const jsPath=await req('/../../../../etc/passwd');assert.equal(jsPath.status,404);
 });
