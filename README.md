@@ -1,4 +1,4 @@
-# Cadence Curriculum Planner — Northstar demo v0.4
+# Cadence Curriculum Planner — Northstar demo v0.5
 
 A **working local-only synthetic demo** for a fictional high-school CTE teacher. It calculates usable instructional minutes and proposes deterministic, reviewable recovery plans after unexpected schedule disruptions. Nothing connects to a real school system. No LLM, credentials, subscription, or paid service is necessary.
 
@@ -30,7 +30,7 @@ Optional environment variables are in `.env.example`. Example: `PORT=4180 DB_PAT
 2. Preview a lost **November 24, 2026** class, **10:00–11:15** (the prefilled demo values).
 3. Compare **Keep every lesson** (infeasible) with **Defer optional work** (feasible; retains all 640 required minutes). Expand the changed lessons to inspect date movements and available time.
 4. Click **Accept plan** on the feasible proposal to create a new accepted version. Or click **Reject** to leave the baseline alone.
-5. Open **Adjust plan** (or click **Move** beside any calendar allocation); select a block, meeting and local start time. Click **Preview simple move** and compare before/after. An invalid move is rejected with an explanation. Approve or discard the draft; the accepted timetable changes only after approval.
+5. Open **Weekly timetable** to see five school days at a glance. Drag a lesson block onto another meeting (desktop), or select a block and use **Choose destination** (keyboard/touch). A drop only opens a persisted, validated **draft** with before/after allocations. Compare the accepted versus proposed timetable before approving. For fine-grained control, open **Adjust plan** (or click **Move** beside any calendar allocation); select a block, meeting and local start time. Click **Preview simple move** and compare before/after. An invalid move is rejected with an explanation. Approve or discard the draft; the accepted timetable changes only after approval.
 6. Inspect **Calendar & capacity** for all sessions, exclusions and allocations, **Plan history** to restore an earlier accepted plan (including a manually edited version), and download the accepted plan as CSV or `.ics`.
 7. Open **Exact fixture** to inspect six 50-minute sessions, overlapping closure records, the 30-minute shortage, and the validated 240-minute required-content recovery.
 
@@ -45,8 +45,8 @@ Try editing a lesson duration under **Curriculum**. This increments the curricul
 - `src/server/rearrange.ts` — bounded multi-allocation displacement search and full-plan safety check.
 - `src/server/db.ts` — SQLite migration, synthetic fixtures, version/teacher-decision transactions, audit, scoped reset.
 - `src/server/server.ts` — same-origin local HTTP API, validation, static app, CSV/ICS export.
-- `src/client/app.ts` and `public/` — compiled browser interface and CSS; no external runtime dependencies.
-- `tests/` — executable rule, persistence, state-transition, and HTTP/export tests.
+- `src/client/app.ts`, `src/client/week.ts` and `public/` — calendar-local week navigation, five-minute segment-aware drag placement, accessible selection controls, and compiled browser interface; no external runtime dependencies.
+- `tests/` — executable rules for arithmetic, date navigation, placement snapping, persistence, state transitions, and HTTP/export behavior.
 - `sample-data/` — synthetic example input/output.
 - `docs/` — product brief, constraints, pilot protocol, test results.
 
@@ -66,6 +66,14 @@ Try editing a lesson duration under **Curriculum**. This increments the curricul
 - Server-side validation enforces bounded inputs, required session intervals, approved HTTP(S) resource URLs and many scheduler invariants. HTML text is escaped when rendered. The browser never receives secrets and the app makes no external requests.
 - User-supplied text is data only; it is never executed as a command or passed to a model. There is no LLM workflow.
 - Explicit pilot data should be anonymized and require authorization before import. This demo intentionally has no private production connectors.
+
+## v0.5 weekly board and verification
+
+- The weekly board shows all five weekdays, current section sessions, excluded segments, and real allocation blocks, plus a readable list for short blocks. Week navigation operates on school date-only values and is stable over November daylight saving.
+- Native HTML drag/drop creates a **preview only**. A backend error on a collision triggers the bounded multi-block rearranger; unrelated constraint failures are surfaced without trying to defeat them. Use block selection and Choose destination on touch and keyboard devices.
+- Draft proposals are persisted, version-checked, and highlighted separately from accepted allocations. The teacher can compare before/after, approve or discard; exports always reference the accepted plan.
+- Node test suite: **34 passing tests** at packaging time, including four new local-date and snapping cases. A headless Chromium **offline visualization** loaded the real frontend against a saved synthetic state and verified week navigation, desktop/mobile overflow, keyboard selections, drag preview rendering, and before/after toggles with no JS errors. Chromium was prohibited from navigating to local HTTP by the execution sandbox, so this is **not** a connected end-to-end browser acceptance test; API and state transitions are separately tested.
+- Browser-only drag/drop is not designed for touch; the accessible selection and editor flow is an intentional alternative. No automatic acceptance, cross-organization access, production auth, or production calendar integrations have been implemented.
 
 ## Limitations / next iteration
 
