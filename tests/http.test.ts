@@ -86,4 +86,14 @@ test('HTTP rejects cross-site mutation requests and invalid input' ,async()=>{
  const bad=await post('/api/calendar/exception',{sectionId:'cte-tt',date:'2030-01-01',kind:'holiday',reason:'Out of term'});assert.equal(bad.status,400);
  const state=await (await req('/api/state')).json() as any;assert.equal(state.sections.length,2);
 });
+test('CSV exports treat teacher-authored formula-like titles as text, never executable spreadsheet formulas',async()=>{
+ assert.equal((await post('/api/reset',{})).status,200);
+ const formula='=HYPERLINK("https://example.invalid","Click here")';
+ const response=await req('/api/lessons/lesson-18',{method:'PATCH',headers:{'content-type':'application/json'},body:JSON.stringify({title:formula})});
+ assert.equal(response.status,200);
+ const csv=await (await req('/api/export/cte-tt.csv')).text();
+ assert.ok(csv.includes(`"'=HYPERLINK(""https://example.invalid"",""Click here"")"`));
+ assert.ok(!csv.includes(',"=HYPERLINK'));
+ assert.equal((await post('/api/reset',{})).status,200);
+});
 test('shutdown test server',async()=>{await new Promise<void>((resolve,reject)=>app.close(err=>err?reject(err):resolve()));rmSync(folder,{recursive:true,force:true});});
