@@ -65,3 +65,34 @@ test('bounded chain rearrangement relocates two overlaps without shortening requ
  const {validatePlan}=await import('../src/server/validate-plan.js');
  assert.deepEqual(validatePlan(lessons,sessions,[],'section',r.result),[]);
 });
+
+test('alternating week parity follows school weeks, not seven-day term offsets',()=>{
+ const f=exactFixture();
+ const term={...f.term,startDate:'2026-10-28',endDate:'2026-11-13'};
+ const section:Section={...f.section,patterns:[{id:'mwf-odd',days:[1,3,5],start:'09:00',durationMinutes:50,parity:'odd'}]};
+ const sessions=generateSessions(term,section,[]);
+ assert.deepEqual(sessions.map(s=>s.date),['2026-10-28','2026-10-30','2026-11-09','2026-11-11','2026-11-13']);
+ assert.equal(capacitySummary(sessions).availableMinutes,250);
+});
+test('hundred seeded overlapping closure sets reconcile to a minute-by-minute oracle',()=>{
+ const f=exactFixture();
+ let seed=2791;
+ const random=()=>{seed=(seed*1664525+1013904223)>>>0;return seed/4294967296;};
+ for(let trial=0;trial<100;trial++){
+  const day='2026-10-28',blocked=new Set<number>();
+  const events:CalendarException[]=[];
+  for(let i=0;i<9;i++){
+   const left=Math.floor(random()*50),right=left+1+Math.floor(random()*(50-left));
+   for(let m=left;m<right;m++)blocked.add(m);
+   const time=(n:number)=>`${String(Math.floor(n/60)).padStart(2,'0')}:${String(n%60).padStart(2,'0')}`;
+   events.push({id:`block-${i}`,date:day,sectionId:f.section.id,kind:'partial',start:time(540+left),end:time(540+right),reason:'Randomized test',source:'teacher'});
+  }
+  // A duplicate event must remove no additional instructional minute.
+  events.push({...events[0]!,id:'duplicate'});
+  const session=generateSessions(f.term,f.section,events).find(s=>s.date===day)!;
+  assert.equal(session.availableMinutes,50-blocked.size);
+  assert.equal(session.exclusions.reduce((n,x)=>n+x.minutes,0),blocked.size);
+  assert.equal(session.exclusions.find(x=>x.id==='duplicate')?.minutes,0);
+  assert.equal(session.segments.reduce((n,x)=>n+x.minutes,0),50-blocked.size);
+ }
+});
