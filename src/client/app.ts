@@ -1,6 +1,6 @@
-export {};
+import {shiftDate,mondayOf,asMinute,snapDropStart} from './week.js';
 type State=any;
-let state:State=null;let sectionId='cte-tt';let view='overview';let moveAllocationId:string|null=null;let fixture:State=null;let loading=false;let suggestions:State=null;let toastTimeout:number|undefined;
+let state:State=null;let sectionId='cte-tt';let view='overview';let weekMonday:string|null=null;let draggedId:string|null=null;let activeDraftId:string|null=null;let showProposedWeek=true;let moveAllocationId:string|null=null;let fixture:State=null;let loading=false;let suggestions:State=null;let toastTimeout:number|undefined;
 const el=(id:string)=>document.getElementById(id)!;
 const esc=(x:unknown):string=>String(x??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#39;');
 const e=(x:unknown)=>esc(x);
@@ -22,6 +22,7 @@ function render(){if(!state)return;const s=section();const plan=accepted(),r=res
  document.querySelectorAll<HTMLElement>('[data-view]').forEach(b=>{b.classList.toggle('active',b.dataset.view===view);if(b.dataset.view===view)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current');});
  if(view==='overview')el('main').innerHTML=overview(s,plan,r);
  if(view==='calendar')el('main').innerHTML=calendar(s,plan,r);
+ if(view==='week')el('main').innerHTML=weekView(s,plan,r);
  if(view==='adjust')el('main').innerHTML=adjustView(s,plan,r);
  if(view==='lessons')el('main').innerHTML=curriculum(s);
  if(view==='history')el('main').innerHTML=history(s);
@@ -61,6 +62,51 @@ function calendar(s:any,plan:any,r:any){return (plan?.curriculumRevision!==state
  <div><div class="panel"><h2>Add calendar event</h2><p>Holidays, PD, testing, partial reductions, cancellations, or explicitly available extra classes. Creating an event marks prior plan versions stale until regenerated.</p>
  <form data-form="exception"><div class="form-grid"><label class="field">Date<input name="date" type="date" min="${e(state.term.startDate)}" max="${e(state.term.endDate)}" required></label><label class="field">Type<select name="kind"><option value="holiday">Holiday</option><option value="testing">Testing block</option><option value="pd">PD day</option><option value="closure">Closure</option><option value="partial">Partial-day closure</option><option value="cancelled">Cancelled session</option><option value="extra">Extra instructional session</option></select></label><label class="field">Applies to<select name="sectionId"><option value="">Both sections</option>${state.sections.map((x:any)=>`<option value="${e(x.id)}" ${x.id===sectionId?'selected':''}>${e(x.name)}</option>`).join('')}</select></label><label class="field">Reason<input name="reason" maxlength="160" placeholder="Calendar note" required></label><label class="field">From (optional except partial/extra)<input name="start" type="time"></label><label class="field">Until<input name="end" type="time"></label></div><button class="btn primary" type="submit">Save calendar event</button></form></div>
  <div class="panel"><h2>Existing calendar events</h2>${state.exceptions.map((x:any)=>`<div class="version-row"><span class="tag neutral">${e(x.kind)}</span><div><strong>${e(x.date)} ${x.start?e(x.start+'–'+x.end):'all day'}</strong><span>${e(x.reason)} · ${e(x.sectionId||'Both sections')}</span></div></div>`).join('')}</div></div></div>`;}
+/** The weekly board renders accepted allocations and optionally a persisted, UNAPPROVED proposal. */
+function weekView(s:any,plan:any,r:any){
+ const week=mondayOf(weekMonday||state.term.startDate);weekMonday=week;
+ const stale=!plan||plan.curriculumRevision!==state.term.revision;
+ const pending=s.manualProposals.filter((p:any)=>p.status==='draft'&&p.sourceVersionId===plan?.id&&p.curriculumRevision===state.term.revision);
+ const draft=pending.find((p:any)=>p.id===activeDraftId)||null;
+ const proposed=!!draft&&showProposedWeek;
+ const timetable=proposed?draft.result:r;
+ const changed=new Set((draft?.changes?.length?draft.changes:[{before:draft?.before,after:draft?.after}]).filter((c:any)=>c?.after).map((c:any)=>c.after.id));
+ const selectedBlock=r?.allocations.find((a:any)=>a.id===moveAllocationId);
+ const dates=Array.from({length:5},(_,i)=>shiftDate(week,i));
+ const monthRange=`${dateLabel(week)} – ${dateLabel(shiftDate(week,4))}`;
+ const minWeek=mondayOf(state.term.startDate),maxWeek=mondayOf(state.term.endDate);
+ const toolbar=`<div class="week-toolbar"><div class="week-nav" aria-label="Week navigation"><button class="btn small" data-action="week-prev" ${week<=minWeek?'disabled':''} aria-label="Previous school week">← Previous</button><strong>${e(monthRange)}</strong><button class="btn small" data-action="week-next" ${week>=maxWeek?'disabled':''} aria-label="Next school week">Next →</button></div><span class="subtle">${e(state.term.timezone)} · class-local times</span></div>`;
+ const card=(date:string)=>{
+  const meetings=s.sessions.filter((x:any)=>x.date===date);
+  const day=new Date(`${date}T12:00:00Z`).toLocaleDateString('en-US',{weekday:'long',timeZone:'UTC'});
+  return `<section class="week-day" aria-label="${e(day)} ${e(date)}"><div class="week-day-head"><strong>${e(day)}</strong><span>${e(dateLabel(date))}</span></div>${meetings.length?meetings.map((meeting:any)=>{
+   const start=asMinute(meeting.start),width=asMinute(meeting.end)-start;
+   const allocated=(timetable?.allocations||[]).filter((a:any)=>a.sessionId===meeting.id).sort((a:any,b:any)=>a.start.localeCompare(b.start));
+   const blocks=allocated.map((a:any)=>{
+    const left=((asMinute(a.start)-start)/width)*100;const pct=a.minutes/width*100;
+    return `<button type="button" class="week-block${changed.has(a.id)&&proposed?' week-changed':''}${moveAllocationId===a.id?' week-selected':''}" draggable="${!stale&&!draft}" data-action="week-select" data-id="${e(a.id)}" data-drag-id="${e(a.id)}" style="left:${left.toFixed(2)}%;width:${pct.toFixed(2)}%" title="${e(name(a.lessonId))} ${e(a.start)}–${e(a.end)}. Select this lesson, then choose a destination." aria-pressed="${moveAllocationId===a.id}"><span>${e(name(a.lessonId))}</span><small>${e(a.start)}–${e(a.end)}</small></button>`;
+   }).join('');
+   const segs=meeting.segments.map((part:any)=>`<span class="week-available" style="left:${(((asMinute(part.start)-start)/width)*100).toFixed(2)}%;width:${((part.minutes/width)*100).toFixed(2)}%"></span>`).join('');
+   return `<div class="week-meeting"><div class="week-meeting-head"><span>${e(meeting.start)}–${e(meeting.end)}</span><span>${meeting.availableMinutes}m available</span></div><div class="week-track ${meeting.availableMinutes===0?'week-closed':''}" data-drop-session="${e(meeting.id)}" aria-label="${e(date)} ${e(meeting.start)} available segments">${segs}${blocks}</div><div class="week-meeting-foot">${meeting.exclusions.length?`<span class="week-excluded">${e(meeting.exclusions.map((x:any)=>x.reason).join(' · '))}</span>`:`<span>${allocated.length} lesson blocks</span>`}<button class="week-target" type="button" data-action="week-target" data-id="${e(meeting.id)}" ${stale||meeting.availableMinutes===0||!selectedBlock?'disabled':''} title="Select a lesson first, then choose this meeting">Choose destination</button></div><details class="week-block-list"><summary>List ${allocated.length} lesson block(s)</summary>${allocated.map((a:any)=>`<div><button type="button" data-action="week-select" data-id="${e(a.id)}" aria-pressed="${moveAllocationId===a.id}">${e(name(a.lessonId))}</button> <span>${e(a.start)}–${e(a.end)}</span></div>`).join('')||'<p>No lessons allocated.</p>'}</details></div>`;
+  }).join(''):`<p class="week-no-class">No class scheduled</p>`}</section>`;
+ };
+ const selectedLabel=selectedBlock?`<div class="week-selection"><strong>Selected lesson:</strong> ${e(name(selectedBlock.lessonId))} · ${e(selectedBlock.date)} ${e(selectedBlock.start)}–${e(selectedBlock.end)}. <button type="button" class="btn small" data-action="week-clear">Clear selection</button></div>`:'<p class="subtle">Select a lesson block first, then choose a destination or drag the lesson to another meeting.</p>';
+ const review=draft?`<div class="panel week-review"><div class="panel-head"><h2>Review ${draft.changes?.length>1?`${draft.changes.length} proposed changes`:'proposed change'}</h2><span class="tag warn">NOT YET ACCEPTED</span></div><p>The highlighted blocks are a draft only. No accepted dates or exports change until you approve the entire proposal.</p><div class="action-row"><button class="btn small ${!proposed?'primary':''}" data-action="week-before" aria-pressed="${!proposed}">Accepted timetable</button><button class="btn small ${proposed?'primary':''}" data-action="week-after" aria-pressed="${proposed}">Proposed timetable</button></div><div class="table-wrap"><table class="data"><thead><tr><th>Lesson</th><th>Accepted</th><th>Proposed</th></tr></thead><tbody>${(draft.changes?.length?draft.changes:[{before:draft.before,after:draft.after}]).map((c:any)=>`<tr><td>${e(name(c.before.lessonId))}</td><td>${e(c.before.date)} ${e(c.before.start)}–${e(c.before.end)}</td><td>${e(c.after.date)} ${e(c.after.start)}–${e(c.after.end)}</td></tr>`).join('')}</tbody></table></div><p>${e(draft.result.usedMinutes)} allocated minutes; ${e(draft.result.remainingMinutes)} minutes buffer. Every move was validated by the scheduling engine.</p><div class="action-row"><button class="btn primary" data-action="manual-accept" data-id="${e(draft.id)}" ${stale?'disabled':''}>Approve rearrangement</button><button class="btn" data-action="manual-reject" data-id="${e(draft.id)}">Discard draft</button></div></div>`:pending.length?`<div class="callout warn">${pending.length} earlier unapproved draft(s) exist. <button class="btn small" data-action="week-open-draft" data-id="${e(pending[0].id)}">Review latest draft</button></div>`:'';
+ return pagehead('Weekly timetable','Drag a lesson to another meeting to preview a validated move. Buttons provide an equivalent keyboard and touch workflow.',`<button class="btn" data-view="adjust">Detailed editor</button><a class="btn" href="/api/export/${e(sectionId)}.csv">Export accepted plan</a>`)+
+ (stale?'<div class="callout warn">This timetable is stale. Regenerate the baseline before rearranging lessons.</div>':'')+
+ review+toolbar+selectedLabel+`<div class="week-grid" role="group" aria-label="Five-day class timetable">${dates.map(card).join('')}</div><div class="panel"><h2>Move lessons safely</h2><p><strong>Desktop:</strong> drag a lesson onto a session timeline and release at the desired start time. <strong>Keyboard or touch:</strong> select a lesson, then Choose destination, and adjust the time in the detailed editor. Only a proposal is created; approval is always separate.</p><p>Gray portions are excluded school time. Colored bars are allocated lessons. Highlighted bars represent proposed changes. Moving a fixed assessment to another date is not allowed.</p></div>`;
+}
+async function previewWeekMove(allocationId:string,sessionId:string,start:string){
+ if(loading)return;loading=true;
+ try{
+  let draft:any;
+  const request={sectionId,allocationId,targetSessionId:sessionId,start};
+  try{draft=await api('/api/manual-moves/preview','POST',request);}
+  catch(err){if(!/overlap/i.test((err as Error).message))throw err;draft=await api('/api/manual-moves/rearrange','POST',request);}
+  activeDraftId=draft.id;showProposedWeek=true;
+  await refresh();notify(`Review required: ${draft.changes?.length||1} lesson block(s) affected. No changes approved.`);
+ }catch(err){notify((err as Error).message,true);}finally{loading=false;}
+}
 function adjustView(s:any,plan:any,r:any){
  const stale=!plan||plan.curriculumRevision!==state.term.revision;
  const allocations=r?.allocations||[];
@@ -101,13 +147,27 @@ async function runAction(action:string,id:string|undefined){if(loading)return;lo
   notify(`Rearrangement draft ready: ${proposal.changes.length} blocks affected. Review before accepting.`);
   await refresh();return;
  }
+ if(action==='week-prev'||action==='week-next'){weekMonday=shiftDate(mondayOf(weekMonday||state.term.startDate),action==='week-prev'?-7:7);render();return;}
+ if(action==='week-before'||action==='week-after'){showProposedWeek=action==='week-after';render();return;}
+ if(action==='week-clear'){moveAllocationId=null;render();return;}
+ if(action==='week-open-draft'){activeDraftId=id||null;showProposedWeek=true;render();return;}
+ if(action==='week-select'){moveAllocationId=id||null;suggestions=null;render();notify('Lesson selected. Choose a destination meeting, or drag the selected block.');return;}
+ if(action==='week-target'){
+  if(!moveAllocationId)throw new Error('Select a lesson before choosing a destination');
+  const session=section().sessions.find((x:any)=>x.id===id);
+  if(!session||!session.segments.length)throw new Error('Session has no available time');
+  view='adjust';render();
+  const form=document.querySelector<HTMLFormElement>('form[data-form=manual-move]');
+  if(form){(form.elements.namedItem('targetSessionId') as HTMLSelectElement).value=session.id;(form.elements.namedItem('start') as HTMLInputElement).value=session.segments[0].start;(form.elements.namedItem('start') as HTMLInputElement).focus();}
+  notify('Destination selected. Choose a time and preview; no changes have been made.');return;
+ }
  if(action==='suggest'){if(!id)return;suggestions=await api(`/api/manual-moves/suggestions?sectionId=${encodeURIComponent(sectionId)}&allocationId=${encodeURIComponent(id)}`);render();return;}
  if(action==='choose-slot'){const form=document.querySelector<HTMLFormElement>('form[data-form=manual-move]');if(!form)return;const choice=document.querySelector<HTMLElement>(`[data-action=choose-slot][data-id=\"${id}\"]`);if(!choice)return;(form.elements.namedItem('targetSessionId') as HTMLSelectElement).value=id||'';(form.elements.namedItem('start') as HTMLInputElement).value=choice.dataset.start||'';notify('Feasible slot selected. Preview to review the change.');return;}
  if(action==='reset'){if(!window.confirm('Reset this synthetic demo and erase all its local changes?'))return;await api('/api/reset','POST');notify('Synthetic demo reset.');}
  else if(action==='baseline'){const x=await api('/api/baseline','POST',{sectionId});if(!x.result.feasible)notify(`Baseline infeasible: ${x.result.unsatisfied.map((u:any)=>name(u.lessonId)).join(', ')||x.result.errors.join(', ')}`,true);else notify('New baseline saved and versioned.');}
  else if(action==='accept'||action==='reject'){if(!id)return;await api(`/api/proposals/${id}/${action}`,'POST');notify(action==='accept'?'Approved: a new plan version was saved.':'Proposal rejected. Accepted plan unchanged.');}
  else if(action==='move'){suggestions=null;moveAllocationId=id||null;view='adjust';render();return;}
- else if(action==='manual-accept'||action==='manual-reject'){if(!id)return;await api(`/api/manual-moves/${id}/${action==='manual-accept'?'accept':'reject'}`,'POST',{});notify(action==='manual-accept'?'Manual adjustment approved and saved as a new version.':'Draft discarded. Accepted plan unchanged.');}
+ else if(action==='manual-accept'||action==='manual-reject'){if(!id)return;await api(`/api/manual-moves/${id}/${action==='manual-accept'?'accept':'reject'}`,'POST',{});activeDraftId=null;notify(action==='manual-accept'?'Manual adjustment approved and saved as a new version.':'Draft discarded. Accepted plan unchanged.');}
  else if(action==='restore'){if(!id)return;await api('/api/restore','POST',{sectionId,versionId:id});notify('Historical plan restored as a new version.');}
  await refresh();
  }catch(err){notify((err as Error).message,true);}finally{loading=false;}}
@@ -131,5 +191,38 @@ async function submitForm(form:HTMLFormElement){if(loading)return;const kind=for
 document.addEventListener('click',ev=>{const target=(ev.target as HTMLElement).closest<HTMLElement>('[data-view],[data-action]');if(!target)return;if(target.dataset.view){view=target.dataset.view;render();return;}if(target.dataset.action){void runAction(target.dataset.action,target.dataset.id);}});
 document.addEventListener('submit',ev=>{const form=ev.target as HTMLFormElement;if(!form.dataset.form)return;ev.preventDefault();void submitForm(form);});
 document.addEventListener('change',ev=>{const target=ev.target as HTMLSelectElement;if(target.id==='allocation-editor'){moveAllocationId=target.value;suggestions=null;render();}});
-el('section-select').addEventListener('change',ev=>{sectionId=(ev.target as HTMLSelectElement).value;fixture=null;suggestions=null;render();});
+el('section-select').addEventListener('change',ev=>{sectionId=(ev.target as HTMLSelectElement).value;fixture=null;suggestions=null;moveAllocationId=null;activeDraftId=null;render();});
 refresh().catch(err=>{el('main').innerHTML=`<div class="panel"><h2>Cannot connect to local planner</h2><p>${e(err.message)}</p><button class="btn" onclick="location.reload()">Retry</button></div>`;});
+
+// Drag and drop changes only a preview. The accepted timetable remains untouched.
+document.addEventListener('dragstart',ev=>{
+ const source=(ev.target as HTMLElement).closest<HTMLElement>('[data-drag-id]');
+ if(!source||view!=='week')return;
+ draggedId=source.dataset.dragId||null;
+ if(ev.dataTransfer){ev.dataTransfer.effectAllowed='move';ev.dataTransfer.setData('text/plain',draggedId||'');}
+});
+document.addEventListener('dragover',ev=>{
+ if(!draggedId||view!=='week')return;
+ const target=(ev.target as HTMLElement).closest<HTMLElement>('[data-drop-session]');
+ if(!target)return;
+ ev.preventDefault();if(ev.dataTransfer)ev.dataTransfer.dropEffect='move';target.classList.add('week-drop-over');
+});
+document.addEventListener('dragleave',ev=>{
+ const target=(ev.target as HTMLElement).closest<HTMLElement>('[data-drop-session]');
+ if(target&&!target.contains(ev.relatedTarget as Node))target.classList.remove('week-drop-over');
+});
+document.addEventListener('dragend',()=>{draggedId=null;document.querySelectorAll('.week-drop-over').forEach(x=>x.classList.remove('week-drop-over'));});
+document.addEventListener('drop',ev=>{
+ const target=(ev.target as HTMLElement).closest<HTMLElement>('[data-drop-session]');
+ if(!target||!draggedId||view!=='week')return;
+ ev.preventDefault();const id=draggedId;draggedId=null;
+ document.querySelectorAll('.week-drop-over').forEach(x=>x.classList.remove('week-drop-over'));
+ const session=section()?.sessions.find((x:any)=>x.id===target.dataset.dropSession);
+ const original=result()?.allocations.find((x:any)=>x.id===id);
+ if(!session||!original)return;
+ const bounds=target.getBoundingClientRect();
+ const fraction=bounds.width?(ev.clientX-bounds.left)/bounds.width:0;
+ const start=snapDropStart(session,original.minutes,fraction);
+ if(!start){notify('This period has no continuous space for that lesson. Choose another session.',true);return;}
+ void previewWeekMove(id,session.id,start);
+});
