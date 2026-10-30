@@ -151,3 +151,41 @@ test('suggested manual slots are validated, bounded and read-only',async()=>{
   assert.throws(()=>suggestManualMoves(d.db,'cte-tt',a.id),/stale/);
  }finally{d.done();}
 });
+
+test('occupied period can be previewed as a multi-block rearrangement, accepted, restored, and rejected',async()=>{
+ const {previewRearrangement,decideManualMove,previewManualMove}=await import('../src/server/db.js');
+ const d=demo();try{
+  const before=activeVersion(d.db,'cte-tt')!;
+  const selected=before.snapshot.result.allocations.find(a=>a.lessonId==='lesson-17'&&a.date==='2026-11-26')!;
+  const occupied=before.snapshot.result.allocations.find(a=>a.lessonId==='lesson-18')!;
+  assert.throws(()=>previewManualMove(d.db,{sectionId:'cte-tt',allocationId:selected.id,targetSessionId:occupied.sessionId,start:occupied.start}),/overlap/i);
+  const p=previewRearrangement(d.db,{sectionId:'cte-tt',allocationId:selected.id,targetSessionId:occupied.sessionId,start:occupied.start});
+  assert.equal(p.strategy,'rearrange');assert.ok(p.changes!.length>=2);
+  assert.equal(activeVersion(d.db,'cte-tt')!.id,before.id);
+  assert.equal(p.result.usedMinutes,before.snapshot.result.usedMinutes);
+  const changed=decideManualMove(d.db,p.id,'accept');assert.equal(changed.version?.versionNo,2);
+  assert.equal(changed.version?.snapshot.result.allocations.find(a=>a.id===selected.id)?.start,occupied.start);
+  assert.equal(changed.version?.snapshot.result.allocations.find(a=>a.id===occupied.id)?.start,'10:00');
+  const reloaded=openDb(d.path);try{
+   assert.deepEqual(activeVersion(reloaded,'cte-tt')!.snapshot.result.allocations,changed.version!.snapshot.result.allocations);
+  }finally{reloaded.close();}
+  const restored=restore(d.db,'cte-tt',before.id);assert.deepEqual(restored.snapshot.result.allocations,before.snapshot.result.allocations);
+  const discarded=previewRearrangement(d.db,{sectionId:'cte-tt',allocationId:selected.id,targetSessionId:occupied.sessionId,start:occupied.start});
+  const x=decideManualMove(d.db,discarded.id,'reject');assert.equal(x.version,null);
+  assert.equal(activeVersion(d.db,'cte-tt')!.id,restored.id);
+ }finally{d.done();}
+});
+
+test('rearrangement is stale after curriculum revision and cannot displace fixed assessment',async()=>{
+ const {previewRearrangement,decideManualMove}=await import('../src/server/db.js');
+ const d=demo();try{
+  const base=activeVersion(d.db,'cte-tt')!.snapshot.result;
+  const selected=base.allocations.find(a=>a.lessonId==='lesson-17'&&a.date==='2026-11-26')!;
+  const occupied=base.allocations.find(a=>a.lessonId==='lesson-18')!;
+  const exam=base.allocations.find(a=>a.lessonId==='lesson-14')!;
+  assert.throws(()=>previewRearrangement(d.db,{sectionId:'cte-tt',allocationId:selected.id,targetSessionId:exam.sessionId,start:exam.start}),/No valid rearrangement|outside/i);
+  const draft=previewRearrangement(d.db,{sectionId:'cte-tt',allocationId:selected.id,targetSessionId:occupied.sessionId,start:occupied.start});
+  patchLesson(d.db,'lesson-01',{title:'Edited'});
+  assert.throws(()=>decideManualMove(d.db,draft.id,'accept'),/stale/);
+ }finally{d.done();}
+});
