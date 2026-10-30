@@ -60,3 +60,72 @@ test('teacher can add a unit and session-based lesson with section-dependent min
  assert.equal(mwUsed,100);assert.equal(ttUsed,0);assert.ok(!tt.feasible);assert.ok(tt.shortageMinutes>=105);
  }finally{d.done();}
 });
+
+test('manual lesson move previews without mutating baseline, then accepts, reloads and restores',async()=>{
+ const {previewManualMove,decideManualMove}=await import('../src/server/db.js');
+ const d=demo();try{
+  const original=activeVersion(d.db,'cte-tt')!;
+  const block=original.snapshot.result.allocations.find(a=>a.lessonId==='lesson-18')!;
+  const req={sectionId:'cte-tt',allocationId:block.id,targetSessionId:block.sessionId,start:'10:40'};
+  const proposal=previewManualMove(d.db,req);
+  assert.equal(proposal.status,'draft');assert.equal(proposal.before.start,'10:35');assert.equal(proposal.after.start,'10:40');
+  assert.equal(activeVersion(d.db,'cte-tt')!.id,original.id);
+  const result=decideManualMove(d.db,proposal.id,'accept');
+  assert.equal(result.version?.versionNo,2);
+  assert.equal(result.version?.snapshot.result.usedMinutes,original.snapshot.result.usedMinutes);
+  assert.equal(result.version?.snapshot.result.remainingMinutes,original.snapshot.result.remainingMinutes);
+  assert.equal(result.version?.snapshot.result.allocations.find(a=>a.id===block.id)?.start,'10:40');
+  assert.throws(()=>decideManualMove(d.db,proposal.id,'accept'),/already decided/);
+  const reload=openDb(d.path);try{
+   const st=getState(reload).sections.find(s=>s.id==='cte-tt')!;
+   assert.equal(st.activePlan?.snapshot.result.allocations.find(a=>a.id===block.id)?.start,'10:40');
+   assert.equal(st.manualProposals.find(p=>p.id===proposal.id)?.status,'accepted');
+  }finally{reload.close();}
+  const reverted=restore(d.db,'cte-tt',original.id);
+  assert.equal(reverted.versionNo,3);
+  assert.equal(reverted.snapshot.result.allocations.find(a=>a.id===block.id)?.start,'10:35');
+  const manualRestored=restore(d.db,'cte-tt',result.version!.id);
+  assert.equal(manualRestored.versionNo,4);
+  assert.equal(manualRestored.snapshot.result.allocations.find(a=>a.id===block.id)?.start,'10:40');
+ }finally{d.done();}
+});
+
+test('manual proposal rejection never changes accepted timetable',async()=>{
+ const {previewManualMove,decideManualMove}=await import('../src/server/db.js');
+ const d=demo();try{
+  const before=activeVersion(d.db,'cte-tt')!;
+  const block=before.snapshot.result.allocations.find(a=>a.lessonId==='lesson-18')!;
+  const proposal=previewManualMove(d.db,{sectionId:'cte-tt',allocationId:block.id,targetSessionId:block.sessionId,start:'10:40'});
+  const decision=decideManualMove(d.db,proposal.id,'reject');assert.equal(decision.version,null);
+  assert.equal(activeVersion(d.db,'cte-tt')!.id,before.id);
+  assert.equal(getState(d.db).sections.find(s=>s.id==='cte-tt')?.manualProposals[0]?.status,'rejected');
+ }finally{d.done();}
+});
+
+test('manual moves reject occupied time, prerequisite reversal, fixed date changes and staleness',async()=>{
+ const {previewManualMove,decideManualMove}=await import('../src/server/db.js');
+ const d=demo();try{
+  const current=activeVersion(d.db,'cte-tt')!;
+  const last=current.snapshot.result.allocations.find(a=>a.lessonId==='lesson-18')!;
+  const first=current.snapshot.result.allocations.find(a=>a.lessonId==='lesson-01')!;
+  const exam=current.snapshot.result.allocations.find(a=>a.lessonId==='lesson-14')!;
+  assert.throws(()=>previewManualMove(d.db,{sectionId:'cte-tt',allocationId:last.id,targetSessionId:last.sessionId,start:'10:20'}),/Overlapping/);
+  assert.throws(()=>previewManualMove(d.db,{sectionId:'cte-tt',allocationId:last.id,targetSessionId:first.sessionId,start:'10:40'}),/prerequisite|overlap/i);
+  assert.throws(()=>previewManualMove(d.db,{sectionId:'cte-tt',allocationId:exam.id,targetSessionId:last.sessionId,start:'10:15'}),/Fixed assessment/);
+  assert.throws(()=>previewManualMove(d.db,{sectionId:'cte-mwf',allocationId:last.id,targetSessionId:last.sessionId,start:'10:40'}),/Allocation not found/);
+  const p=previewManualMove(d.db,{sectionId:'cte-tt',allocationId:last.id,targetSessionId:last.sessionId,start:'10:40'});
+  patchLesson(d.db,'lesson-02',{title:'Changed topic'});
+  assert.throws(()=>decideManualMove(d.db,p.id,'accept'),/stale/);
+  assert.equal(activeVersion(d.db,'cte-tt')!.id,current.id);
+ }finally{d.done();}
+});
+
+test('a manual move cannot break required minutes by editing or splitting a block',async()=>{
+ const {previewManualMove}=await import('../src/server/db.js');
+ const d=demo();try{
+  const v=activeVersion(d.db,'cte-tt')!;
+  const block=v.snapshot.result.allocations.find(a=>a.lessonId==='lesson-18')!;
+  assert.throws(()=>previewManualMove(d.db,{sectionId:'cte-tt',allocationId:block.id,targetSessionId:block.sessionId,start:'11:00'}),/excluded instructional time|outside|overlapping/i);
+  assert.throws(()=>previewManualMove(d.db,{sectionId:'cte-tt',allocationId:block.id,targetSessionId:block.sessionId,start:block.start}),/different time/);
+ }finally{d.done();}
+});
