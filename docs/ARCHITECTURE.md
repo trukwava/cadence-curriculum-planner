@@ -54,3 +54,10 @@ Schema/migrations are implemented in `src/server/db.ts`; SQLite has foreign-key 
 The demo accepts no imported school documents and makes no production service calls; synthetic content and entered URLs are treated as untrusted display data. Mutating requests require application/json and reject mismatched Origin headers. HTML rendering escapes text, and response headers include a restrictive script CSP and frame denial. Size limits and basic input validation are enforced server-side. This is *not* a substitute for authentication, session management, rate limits or production authorization; the intended interface is loopback only.
 
 Data are retained in `data/demo.sqlite` until reset or manual deletion. No hidden telemetry, emails or background tasks. No automated backup; preserve the DB manually if necessary. Never place secret credentials in browser code.
+
+
+## v0.4 bounded occupied-slot rearrangements
+
+`src/server/rearrange.ts` performs a deterministic recursive displacement search over local classroom intervals. The teacher-selected placement is locked; up to three additional blocks may be moved. Anchor blocks are immutable and all candidate completed plans pass `validatePlan` before a proposal can be stored or accepted. The planner tests candidate starts on a five-minute grid, limits search to 5,000 nodes and a bounded candidate shortlist, and returns an explicit error if no valid candidate is discovered. This limit prevents claiming global optimality or exhaustive infeasibility.
+
+`POST /api/manual-moves/rearrange` returns a `draft` with a complete `changes` array. The existing transactional `manual_proposals` decision API accepts or rejects the entire rearrangement as one versioned decision, with rollback protection and audit metadata. Re-approval checks the current accepted version, curriculum revision, and the full allocation validator.
