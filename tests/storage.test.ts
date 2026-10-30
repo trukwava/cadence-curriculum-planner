@@ -129,3 +129,25 @@ test('a manual move cannot break required minutes by editing or splitting a bloc
   assert.throws(()=>previewManualMove(d.db,{sectionId:'cte-tt',allocationId:block.id,targetSessionId:block.sessionId,start:block.start}),/different time/);
  }finally{d.done();}
 });
+
+test('suggested manual slots are validated, bounded and read-only',async()=>{
+ const {suggestManualMoves,previewManualMove,patchLesson}=await import('../src/server/db.js');
+ const d=demo();try{
+  const v=activeVersion(d.db,'cte-tt')!;
+  const a=v.snapshot.result.allocations.find(x=>x.lessonId==='lesson-18')!;
+  const suggestions=suggestManualMoves(d.db,'cte-tt',a.id);
+  assert.equal(suggestions.sourceVersionId,v.id);
+  assert.equal(suggestions.allocationId,a.id);
+  assert.ok(suggestions.suggestions.length>0);
+  assert.ok(suggestions.suggestions.length<=12);
+  for(const slot of suggestions.suggestions){
+   const preview=previewManualMove(d.db,{sectionId:'cte-tt',allocationId:a.id,targetSessionId:slot.sessionId,start:slot.start});
+   assert.equal(preview.result.feasible,true);
+   assert.equal(preview.after.minutes,a.minutes);
+  }
+  assert.equal(activeVersion(d.db,'cte-tt')?.id,v.id);
+  assert.throws(()=>suggestManualMoves(d.db,'cte-tt','does-not-exist'),/not found/);
+  patchLesson(d.db,'lesson-02',{title:'Changed topic'});
+  assert.throws(()=>suggestManualMoves(d.db,'cte-tt',a.id),/stale/);
+ }finally{d.done();}
+});
