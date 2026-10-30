@@ -16,7 +16,7 @@ Single Node 22 server with built-in SQLite (`node:sqlite`), strict TypeScript an
 - **PlanVersion / Allocation**: immutable accepted snapshot and stable lesson/session identifiers, each allocation storing date, HH:mm and exact minute count. Versions are append-only.
 - **Disruption**: unplanned section-local excluded interval and active flag.
 - **ReplanProposal**: draft structure containing source version, curriculum revision, strategy, disruption, candidate allocations, moved lesson list, displaced/deferred minutes and feasibility explanations.
-- **TeacherDecision**: accept/reject record. **AuditEvent**: timestamped event without full raw payload.
+- **ManualProposal**: a full candidate snapshot for moving one existing allocation block into a named session/time, with the baseline version and teacher decision recorded. **TeacherDecision**: accept/reject record. **AuditEvent**: timestamped event without full raw payload.
 
 Schema/migrations are implemented in `src/server/db.ts`; SQLite has foreign-key constraints, version uniqueness, constrained booleans and positive stored minute counts. Domain validation occurs again at the server boundary. Display-only records are derived from stored data. Every ID is scoped through the fixed synthetic demo term/section query paths, not accepted as an arbitrary organization.
 
@@ -29,7 +29,9 @@ Schema/migrations are implemented in `src/server/db.ts`; SQLite has foreign-key 
 5. Reserve fixed assessments as one contiguous block on their specified date, then allocate eligible lessons only after prerequisites. Splittable lessons may span sessions; unsplittable lessons may not. Reject infeasible prerequisites or anchors instead of inventing time.
 6. When a disruption is previewed, compute both retain-all and optional-deferral strategies without changing active calendar records. The latter drops optional leaf activities starting from lowest priority, preserving all required durations. A teacher may override the optional deferral set and recalculate.
 7. On accept: check proposal source version and curriculum revision, insert active disruption, write new immutable plan snapshot and allocation rows, record decision and audit event **inside one SQLite transaction**. On reject: mark proposal rejected and record decision only.
-8. On restore: reactivate only disruptions in the selected historical snapshot, recompute the old schedule and compare exact allocation records. If unchanged and curriculum revision matches, append a new accepted version. Otherwise roll back the restoration.
+8. On manual move preview: select a stable allocation ID from the currently accepted version, create a candidate with exactly the same minutes, and validate **all** allocations against current session segments, conflicts, each lesson's duration, dependencies, deferrals and fixed anchors. Persist a draft without modifying the accepted plan. An invalid move is rejected with an explanation.
+9. On manual move accept: under an immediate SQLite write transaction, verify the source version and curriculum revision, revalidate the full candidate independently, append a new plan version and record a manual-decision audit. Rejecting only closes the draft. Editing lesson lengths and dropping mandatory blocks are not supported by this path.
+10. On restore: reactivate only disruptions in the selected historical snapshot, **revalidate the exact stored allocations** against the reconstructed calendar and present curriculum (do not re-run greedy placement, which would erase teacher adjustments). If all constraints and curriculum revision still match, append a new accepted version. Otherwise roll back restoration.
 
 **Important limit:** The scheduler is deterministic greedy, not complete constraint search. A failure can mean the chosen stable allocation order is infeasible rather than every conceivable rearrangement being impossible. It reports its unsatisfied constraints for review. There is no automatic shortening, merging, override of anchor or permission to ignore a hard requirement.
 
@@ -39,6 +41,7 @@ Schema/migrations are implemented in `src/server/db.ts`; SQLite has foreign-key 
 - `POST /api/disruptions/preview` — draft alternatives; accepted state unchanged.
 - `POST /api/proposals/:id/accept` — draft → accepted, new version.
 - `POST /api/proposals/:id/reject` — draft → rejected, baseline unchanged.
+- `POST /api/manual-moves/preview` and `POST /api/manual-moves/:id/accept|reject` — validated teacher-controlled single-block edits.
 - `POST /api/restore` — new accepted version of validated historical state.
 - `POST /api/baseline` — teacher-requested fresh accepted version only when feasible.
 - `POST /api/calendar/exception`, `PATCH /api/term`, `PATCH /api/sections/:id`, `POST /api/units`, `POST /api/lessons`, `PATCH /api/lessons/:id`, `PATCH /api/anchors/:sectionId/:lessonId` — teacher-authored local changes, revision increment.
