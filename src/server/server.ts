@@ -2,7 +2,7 @@ import {createServer,type IncomingMessage,type ServerResponse} from 'node:http';
 import {readFileSync} from 'node:fs';
 import {resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
-import {openDb,initializeDemo,getState,generateBaseline,previewDisruption,decide,restore,resetDemo,activeVersion,ensureSection,term,lessons,previewManualMove,decideManualMove,suggestManualMoves,addException,patchLesson,patchTerm,patchSection,patchAnchor,addLesson,addUnit} from './db.js';
+import {openDb,initializeDemo,getState,generateBaseline,previewDisruption,decide,restore,resetDemo,activeVersion,ensureSection,term,lessons,previewManualMove,previewRearrangement,decideManualMove,suggestManualMoves,addException,patchLesson,patchTerm,patchSection,patchAnchor,addLesson,addUnit} from './db.js';
 import {exactFixture} from './fixtures.js';
 const root=resolve(fileURLToPath(new URL('../../../../',import.meta.url)));
 const db=openDb(process.env.DB_PATH||resolve(root,'data/demo.sqlite'));initializeDemo(db);
@@ -35,6 +35,7 @@ async function handler(req:IncomingMessage,res:ServerResponse){try{
  if(req.method==='POST'&&pathname==='/api/reset')return json(res,200,resetDemo(db));
  if(req.method==='POST'&&pathname==='/api/baseline'){const x=await body(req);return json(res,200,generateBaseline(db,String(x.sectionId||'')));}
  if(req.method==='GET'&&pathname==='/api/manual-moves/suggestions'){const q=new URL(req.url||'/',`http://${host}:${port}`).searchParams;return json(res,200,suggestManualMoves(db,String(q.get('sectionId')||''),String(q.get('allocationId')||'')));}
+ if(req.method==='POST'&&pathname==='/api/manual-moves/rearrange'){const x=await body(req);return json(res,200,previewRearrangement(db,x as any));}
  if(req.method==='POST'&&pathname==='/api/manual-moves/preview'){const x=await body(req);return json(res,200,previewManualMove(db,x as any));}
  const manualMatch=pathname.match(/^\/api\/manual-moves\/([\w-]+)\/(accept|reject)$/);
  if(req.method==='POST'&&manualMatch)return json(res,200,decideManualMove(db,manualMatch[1]!,manualMatch[2] as 'accept'|'reject'));
