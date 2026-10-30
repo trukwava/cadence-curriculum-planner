@@ -6,6 +6,7 @@ import {assertLocalDate,assertTime,minute,type Term,type Section,type CalendarEx
 import {generateSessions,capacitySummary,validatePattern} from './calendar.js';
 import {schedule,optionalRecovery} from './schedule.js';
 import {validatePlan} from './validate-plan.js';
+import {findRearrangement} from './rearrange.js';
 
 const j=(x:unknown)=>JSON.stringify(x);
 const parse=<T>(v:unknown):T=>JSON.parse(String(v)) as T;
@@ -69,11 +70,12 @@ export function proposals(db:DatabaseSync,sectionId:string):Proposal[]{return ro
 export function manualProposals(db:DatabaseSync,sectionId:string):ManualProposal[]{
  return rows<any>(db,'SELECT * FROM manual_proposals WHERE section_id=? ORDER BY created_at DESC,id DESC',sectionId).map(r=>({...parse<ManualProposal>(r.payload_json),status:r.status}));
 }
-/** Read-only candidate search: all suggestions pass full-plan validation. */
+/** Read-only, bounded search for individually feasible moves. Every candidate passes the same full-plan validator as approval. */
 export function suggestManualMoves(db:DatabaseSync,sectionId:string,allocationId:string){
  const sec=ensureSection(db,sectionId),current=activeVersion(db,sec.id),t=term(db);
  if(!current||current.curriculumRevision!==t.revision)throw new Error('Current plan is missing or stale; regenerate baseline');
- const base=current.snapshot.result,original=base.allocations.find(a=>a.id===allocationId);
+ const base=current.snapshot.result;
+ const original=base.allocations.find(a=>a.id===allocationId);
  if(!original)throw new Error('Allocation not found in accepted plan');
  const allSessions=sessionsFor(db,sec.id),allLessons=lessons(db),allAnchors=anchors(db);
  const candidates:{sessionId:string;date:string;start:string;end:string;minutes:number;dayShift:number}[]=[];
@@ -131,6 +133,27 @@ export function previewManualMove(db:DatabaseSync,request:{sectionId:string;allo
   return proposal;
  });
 }
+/** A reviewable displaced-block plan: the original and all affected blocks are persisted together. */
+export function previewRearrangement(db:DatabaseSync,request:{sectionId:string;allocationId:string;targetSessionId:string;start:string}):ManualProposal{
+ const s=ensureSection(db,request.sectionId),t=term(db),current=activeVersion(db,s.id);
+ if(!current||current.curriculumRevision!==t.revision)throw new Error('Accepted plan is missing or stale; regenerate baseline');
+ if(typeof request.allocationId!=='string'||typeof request.targetSessionId!=='string')throw new Error('Select an allocation and destination session');
+ assertTime(request.start);
+ const old=current.snapshot.result.allocations.find(a=>a.id===request.allocationId);
+ if(!old)throw new Error('Allocation not found in current accepted plan');
+ const arrangement=findRearrangement(current.snapshot.result,lessons(db),sessionsFor(db,s.id),anchors(db),s.id,request.allocationId,request.targetSessionId,request.start);
+ if(!arrangement)throw new Error('No valid rearrangement found within the three-displaced-block search limit. The timetable may still have other solutions.');
+ const selected=arrangement.changes.find(x=>x.before.id===old.id);
+ if(!selected)throw new Error('Rearrangement lost selected allocation');
+ return transact(db,()=>{
+  if(activeVersion(db,s.id)?.id!==current.id||term(db).revision!==t.revision)throw new Error('Plan changed during preview; retry');
+  const p:ManualProposal={id:uid(),sectionId:s.id,sourceVersionId:current.id,curriculumRevision:t.revision,createdAt:now(),status:'draft',strategy:'rearrange',allocationId:old.id,targetSessionId:request.targetSessionId,start:request.start,result:arrangement.result,before:selected.before,after:selected.after,changes:arrangement.changes,explored:arrangement.explored};
+  db.prepare('INSERT INTO manual_proposals VALUES (?,?,?,?,?,?,?)').run(p.id,s.id,current.id,t.revision,p.createdAt,'draft',j(p));
+  audit(db,'manual.rearrange.preview',p.id,`Reviewed ${p.changes!.length} allocation shifts; no accepted-plan change`);
+  return p;
+ });
+}
+
 export function decideManualMove(db:DatabaseSync,proposalId:string,decision:'accept'|'reject'){
  return transact(db,()=>{
   const record=row<any>(db,'SELECT * FROM manual_proposals WHERE id=?',proposalId);
@@ -142,7 +165,7 @@ export function decideManualMove(db:DatabaseSync,proposalId:string,decision:'acc
   if(decision==='accept'){
    const failures=validatePlan(lessons(db),sessionsFor(db,p.sectionId),anchors(db),p.sectionId,p.result);
    if(failures.length)throw new Error(`Manual proposal invalid: ${failures.join('; ')}`);
-   version=writeVersion(db,p.sectionId,p.result,`Teacher moved ${p.before.lessonId} to ${p.after.date} ${p.after.start}`,current.id,current.snapshot.disruptions);
+   version=writeVersion(db,p.sectionId,p.result,`Teacher approved ${p.changes?.length||1} allocation move(s); ${p.before.lessonId} to ${p.after.date} ${p.after.start}`,current.id,current.snapshot.disruptions);
   }
   db.prepare('UPDATE manual_proposals SET status=? WHERE id=?').run(decision==='accept'?'accepted':'rejected',proposalId);
   db.prepare('INSERT INTO manual_decisions VALUES (?,?,?,?)').run(uid(),proposalId,decision,now());
