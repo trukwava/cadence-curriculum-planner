@@ -46,3 +46,10 @@ Added a 3-allocation two-overlap pure-engine fixture, a persistent seed-scenario
 ## v0.5.2 CSV safety check
 
 - 37 tests passed. Added an HTTP test for a teacher-created lesson title beginning with a spreadsheet formula: the CSV export quotes internal double-quotes and prefixes an apostrophe so spreadsheet readers treat it as text. Demo reset still restores the original title.
+
+## v0.6 local verification
+
+- TypeScript server and client builds: passed using TypeScript 5.8.3 and Node type declarations.
+- `node --test dist/server/tests/*.test.js`: **39 passed, 0 failed**.
+- Weekly summary tests include a daylight-saving boundary, closures, empty weeks, and an over-capacity week.
+- Real browser-to-server acceptance remains unverified in this iteration.
