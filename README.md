@@ -1,6 +1,4 @@
-# Northstar — Curriculum Calendar Recovery and Pacing
-
-Teacher-owned curriculum calendar recovery and pacing.
+# Cadence Curriculum Planner — Northstar demo v0.2
 
 A **working local-only synthetic demo** for a fictional high-school CTE teacher. It calculates usable instructional minutes and proposes deterministic, reviewable recovery plans after unexpected schedule disruptions. Nothing connects to a real school system. No LLM, credentials, subscription, or paid service is necessary.
 
@@ -8,22 +6,21 @@ A **working local-only synthetic demo** for a fictional high-school CTE teacher.
 
 Prerequisite: **Node.js 22.13+** (tested on Node 22.16; the built-in `node:sqlite` API is experimental in this Node release).
 
-### Run from a GitHub clone
+### Run a GitHub clone (source distribution)
 
 ```bash
 git clone https://github.com/trukwava/cadence-curriculum-planner.git
 cd cadence-curriculum-planner
 npm install
-npm run build
 npm test
 npm start
 ```
 
-Open **http://127.0.0.1:4173**. On first launch, the application creates `./data/demo.sqlite` and seeds the fictional Northstar CTE organization. The repository tracks source files, not generated builds; run `npm run build` after cloning before using `npm start`.
+Open **http://127.0.0.1:4173**. The app creates `./data/demo.sqlite` on first launch and seeds the fictional Northstar CTE organization. The GitHub repository contains the **source**, not checked-in compiled assets: `npm test` runs the TypeScript builds and tests. To build without testing, use `npm run build` before `npm start`.
 
-### Run the separately packaged ZIP
+A **separately distributed v0.1 demo ZIP** included precompiled server/browser JavaScript; if you use that legacy ZIP, run `node dist/server/src/server/server.js` from the extracted `curriculum-recovery` directory. That ZIP predates v0.2's manual adjustment workflow.
 
-The previously supplied downloadable demo ZIP includes precompiled server and browser JavaScript. From the extracted `curriculum-recovery` directory, run `node dist/server/src/server/server.js` without installing dependencies. If rebuilding in an offline environment, provide TypeScript 5.8+ and Node type definitions.
+For an offline rebuild, a compatible TypeScript compiler and Node type definitions must already be available. No runtime third-party packages are required once compilation is complete.
 
 Optional environment variables are in `.env.example`. Example: `PORT=4180 DB_PATH=./data/my-demo.sqlite npm start`. **Keep HOST set to `127.0.0.1`.** There is no remote-user authentication; do not expose this demo to the public network.
 
@@ -33,8 +30,9 @@ Optional environment variables are in `.env.example`. Example: `PORT=4180 DB_PAT
 2. Preview a lost **November 24, 2026** class, **10:00–11:15** (the prefilled demo values).
 3. Compare **Keep every lesson** (infeasible) with **Defer optional work** (feasible; retains all 640 required minutes). Expand the changed lessons to inspect date movements and available time.
 4. Click **Accept plan** on the feasible proposal to create a new accepted version. Or click **Reject** to leave the baseline alone.
-5. Inspect **Calendar & capacity** for all sessions, exclusions and allocations, **Plan history** to restore an earlier accepted plan, and download the accepted plan as CSV or `.ics`.
-6. Open **Exact fixture** to inspect six 50-minute sessions, overlapping closure records, the 30-minute shortage, and the validated 240-minute required-content recovery.
+5. Open **Adjust plan** (or click **Move** beside any calendar allocation); select a block, meeting and local start time. Click **Preview adjustment** and compare before/after. An invalid move is rejected with an explanation. Approve or discard the draft; the accepted timetable changes only after approval.
+6. Inspect **Calendar & capacity** for all sessions, exclusions and allocations, **Plan history** to restore an earlier accepted plan (including a manually edited version), and download the accepted plan as CSV or `.ics`.
+7. Open **Exact fixture** to inspect six 50-minute sessions, overlapping closure records, the 30-minute shortage, and the validated 240-minute required-content recovery.
 
 Try editing a lesson duration under **Curriculum**. This increments the curriculum revision and marks the accepted plan stale rather than silently rewriting its allocations. Use **Regenerate baseline** to produce a new version. **Plan history → Reset synthetic demo** restores the original fictitious scenario.
 
@@ -43,6 +41,7 @@ Try editing a lesson duration under **Curriculum**. This increments the curricul
 - `src/shared/domain.ts` — typed domain objects and date/time validation.
 - `src/server/calendar.ts` — recurring/alternating meeting generation; overlap-union exclusions; exact capacity.
 - `src/server/schedule.ts` — prerequisite sorting, fixed anchors, minute allocations, optional deferral.
+- `src/server/validate-plan.ts` — independent full-plan guard for manual allocation edits and historical restoration.
 - `src/server/db.ts` — SQLite migration, synthetic fixtures, version/teacher-decision transactions, audit, scoped reset.
 - `src/server/server.ts` — same-origin local HTTP API, validation, static app, CSV/ICS export.
 - `src/client/app.ts` and `public/` — compiled browser interface and CSS; no external runtime dependencies.
@@ -56,7 +55,7 @@ Try editing a lesson duration under **Curriculum**. This increments the curricul
 - Two overlapping closures on the same time interval remove those minutes **once**, and the second record reports `0m` additional exclusion. Partial-day intervals are unioned accurately.
 - Non-splittable lessons need a contiguous block in one meeting; splittable lessons may occupy multiple meeting segments. Session-count lessons use the original duration of the section's **first recurring meeting pattern**. They are not shortened by partial closures.
 - A deterministic topological ordering detects missing and cyclic prerequisites. Fixed assessments reserve time on the specified local date. Required lesson durations are never compressed. If the greedy scheduler cannot fit a constraint, it explicitly reports infeasibility; this is **not a globally optimal mathematical scheduling solver**.
-- Every preview is an unaccepted draft. Only teacher acceptance activates a disruption and creates a version. Rejection leaves accepted allocations unchanged. Changes to curriculum or calendar increment a revision and make previous versions stale; restoring historical versions with a different curriculum revision is blocked.
+- Every disruption or manual-move preview is an unaccepted draft. Only teacher acceptance activates a disruption or manual adjustment and creates a version. Rejection leaves accepted allocations unchanged. Changes to curriculum or calendar increment a revision and make previous versions stale; restoring historical versions with a different curriculum revision is blocked.
 - CSV contains a local date and time and explicit school timezone. ICS uses **floating local wall-clock times** plus `X-WR-TIMEZONE`; some calendar clients interpret floating times in the importing device's timezone. Verify recipient calendar behavior before using exported `.ics` operationally.
 - The local database persists edits between page reloads and server restarts. Demo reset deletes/reseeds only the demo organization. Back up `data/demo.sqlite` if you want to preserve edits. SQLite migration is automatic; database retention is until manual deletion or reset.
 
@@ -69,10 +68,10 @@ Try editing a lesson duration under **Curriculum**. This increments the curricul
 
 ## Limitations / next iteration
 
-- No drag-and-drop adjustment of individual lesson allocation intervals. Teachers can revise optional deferral choices, edit lesson requirements or anchors, and regenerate proposals.
+- Individual allocation blocks can be manually moved using a keyboard-accessible form, with server-side validation and teacher approval. **Drag-and-drop and multi-block automatic cascading rearrangement are not implemented.**
 - Merge permission is represented in lesson data but **automatic lesson merging is not implemented**. The scheduler supports split permission and explicit added buffer sessions.
 - No direct Google/Outlook calendar synchronization or production SIS/LMS integration. ICS floating times may need an interoperable VTIMEZONE implementation for a real deployment.
 - No user authentication, permissions, automated backups, or real-customer integration. No multi-pattern session-count disambiguation beyond the first recurring pattern.
-- The included tests cover deterministic core and HTTP routes; a graphical end-to-end browser run was attempted but could not be completed reliably in this runtime. See `docs/TEST_RESULTS.md`.
+- The included tests cover deterministic core, HTTP routes, manual move workflow, and version restoration; Chromium GUI navigation was blocked by this execution environment, so a graphical browser acceptance test has not passed. See `docs/TEST_RESULTS.md`.
 
 See `docs/PRODUCT_BRIEF.md`, `docs/ARCHITECTURE.md`, `docs/PILOT_PLAN.md`, and `docs/TEST_RESULTS.md`.
