@@ -1,4 +1,4 @@
-# Cadence Curriculum Planner — Northstar demo v0.2
+# Cadence Curriculum Planner — Northstar demo v0.4
 
 A **working local-only synthetic demo** for a fictional high-school CTE teacher. It calculates usable instructional minutes and proposes deterministic, reviewable recovery plans after unexpected schedule disruptions. Nothing connects to a real school system. No LLM, credentials, subscription, or paid service is necessary.
 
@@ -18,7 +18,7 @@ npm start
 
 Open **http://127.0.0.1:4173**. The app creates `./data/demo.sqlite` on first launch and seeds the fictional Northstar CTE organization. The GitHub repository contains the **source**, not checked-in compiled assets: `npm test` runs the TypeScript builds and tests. To build without testing, use `npm run build` before `npm start`.
 
-A **separately distributed v0.1 demo ZIP** included precompiled server/browser JavaScript; if you use that legacy ZIP, run `node dist/server/src/server/server.js` from the extracted `curriculum-recovery` directory. That ZIP predates v0.2's manual adjustment workflow.
+A **separately distributed v0.1 demo ZIP** included precompiled server/browser JavaScript; if you use that legacy ZIP, run `node dist/server/src/server/server.js` from the extracted `curriculum-recovery` directory. That ZIP predates v0.4's manual adjustment workflow.
 
 For an offline rebuild, a compatible TypeScript compiler and Node type definitions must already be available. No runtime third-party packages are required once compilation is complete.
 
@@ -30,7 +30,7 @@ Optional environment variables are in `.env.example`. Example: `PORT=4180 DB_PAT
 2. Preview a lost **November 24, 2026** class, **10:00–11:15** (the prefilled demo values).
 3. Compare **Keep every lesson** (infeasible) with **Defer optional work** (feasible; retains all 640 required minutes). Expand the changed lessons to inspect date movements and available time.
 4. Click **Accept plan** on the feasible proposal to create a new accepted version. Or click **Reject** to leave the baseline alone.
-5. Open **Adjust plan** (or click **Move** beside any calendar allocation); select a block, meeting and local start time. Click **Preview adjustment** and compare before/after. An invalid move is rejected with an explanation. Approve or discard the draft; the accepted timetable changes only after approval.
+5. Open **Adjust plan** (or click **Move** beside any calendar allocation); select a block, meeting and local start time. Click **Preview simple move** and compare before/after. An invalid move is rejected with an explanation. Approve or discard the draft; the accepted timetable changes only after approval.
 6. Inspect **Calendar & capacity** for all sessions, exclusions and allocations, **Plan history** to restore an earlier accepted plan (including a manually edited version), and download the accepted plan as CSV or `.ics`.
 7. Open **Exact fixture** to inspect six 50-minute sessions, overlapping closure records, the 30-minute shortage, and the validated 240-minute required-content recovery.
 
@@ -42,6 +42,7 @@ Try editing a lesson duration under **Curriculum**. This increments the curricul
 - `src/server/calendar.ts` — recurring/alternating meeting generation; overlap-union exclusions; exact capacity.
 - `src/server/schedule.ts` — prerequisite sorting, fixed anchors, minute allocations, optional deferral.
 - `src/server/validate-plan.ts` — independent full-plan guard for manual allocation edits and historical restoration.
+- `src/server/rearrange.ts` — bounded multi-allocation displacement search and full-plan safety check.
 - `src/server/db.ts` — SQLite migration, synthetic fixtures, version/teacher-decision transactions, audit, scoped reset.
 - `src/server/server.ts` — same-origin local HTTP API, validation, static app, CSV/ICS export.
 - `src/client/app.ts` and `public/` — compiled browser interface and CSS; no external runtime dependencies.
@@ -68,7 +69,7 @@ Try editing a lesson duration under **Curriculum**. This increments the curricul
 
 ## Limitations / next iteration
 
-- Individual allocation blocks can be manually moved using a keyboard-accessible form, with server-side validation and teacher approval. **Drag-and-drop and multi-block automatic cascading rearrangement are not implemented.**
+- Individual allocation blocks can be manually moved using a keyboard-accessible form, with server-side validation and teacher approval. **Drag-and-drop is not implemented; bounded multi-block rearrangement is now available through explicit teacher review.**
 - Merge permission is represented in lesson data but **automatic lesson merging is not implemented**. The scheduler supports split permission and explicit added buffer sessions.
 - No direct Google/Outlook calendar synchronization or production SIS/LMS integration. ICS floating times may need an interoperable VTIMEZONE implementation for a real deployment.
 - No user authentication, permissions, automated backups, or real-customer integration. No multi-pattern session-count disambiguation beyond the first recurring pattern.
@@ -78,4 +79,13 @@ See `docs/PRODUCT_BRIEF.md`, `docs/ARCHITECTURE.md`, `docs/PILOT_PLAN.md`, and `
 
 ### v0.3 — Validated slot suggestions
 
-Open **Adjust plan**, choose a lesson block, then select **Find feasible slots**. The server searches available meeting intervals in five-minute increments, validates each candidate against the entire accepted timetable (including prerequisites, exclusions, full lesson durations, and assessment anchors), and returns up to twelve options ordered by day proximity. Selecting an option fills the existing manual preview form; it does not save or approve any change. A teacher must preview and explicitly accept a proposed move before a new plan version is created. Suggestions are computed against the current version and are rejected when a curriculum revision makes it stale. The tool does not perform multi-lesson swaps or guarantee all possible reconfigurations.
+Open **Adjust plan**, choose a lesson block, then select **Find feasible slots**. The server searches available meeting intervals in five-minute increments, validates each candidate against the entire accepted timetable (including prerequisites, exclusions, full lesson durations, and assessment anchors), and returns up to twelve options ordered by day proximity. Selecting an option fills the existing manual preview form; it does not save or approve any change. A teacher must preview and explicitly accept a proposed move before a new plan version is created. Suggestions are computed against the current version and are rejected when a curriculum revision makes it stale. This unoccupied-slot finder does not perform multi-lesson swaps; use the separate **Try rearranging conflicts** action for bounded multi-block recovery.
+
+
+### Occupied-slot recovery (v0.4)
+
+On **Adjust plan**, select an allocation, destination class meeting and local start time. A direct **Preview simple move** refuses occupied intervals, preserving the existing behavior. **Try rearranging conflicts** instead runs a deterministic, bounded search which locks the requested block in place and relocates up to three displaced blocks. The resulting draft lists **every block that changes** and remains unapproved until **Accept move**; **Discard draft** changes nothing.
+
+For a working demonstration on the Tuesday/Thursday section: select the `lesson-17` block on `2026-11-26` at `10:00`, choose the same date and start `10:35`. That overlaps `lesson-18`; the planner can relocate the two blocks while respecting the curriculum, available time, and fixed assessments. Save the version, export CSV or iCalendar, then restore it from **Plan history**.
+
+This is bounded search, **not** a global scheduling optimizer: failing to find a rearrangement means only that no solution was found within the search limits. Fixed assessment allocations are protected; no required content is shortened, optional work silently deferred, or changed version accepted without teacher approval. The proposal and its source version remain in SQLite for review and audit.
