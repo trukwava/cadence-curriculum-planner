@@ -14,3 +14,10 @@
 
 
 **v0.2 manual edit verification:** Move an optional 25-minute lesson from Nov 26, 10:35–11:00 to 10:40–11:05 within its session, preview it, and approve it. The accepted version increments and survives a SQLite reopen. CSV and iCalendar exports reflect 10:40–11:05; restoring the earlier and then the moved version preserves the exact accepted allocations. Invalid target sessions, overlapping blocks, changed fixed assessment dates, reversed prerequisites and stale proposals are rejected. A separate HTTP test exercises the preview/accept/export path.
+
+## v0.3 regression — October 30, 2026
+
+- 26 automated tests passed locally using Node 22.16 and TypeScript.
+- New regression verifies bounded, read-only candidate suggestions; each returned option can be passed through the existing full-plan manual preview validator.
+- Suggestion search checks five-minute increments and rejects stale accepted versions.
+- Graphical browser layout and GitHub Actions status were not verified in this run.
