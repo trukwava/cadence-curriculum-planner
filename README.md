@@ -97,3 +97,9 @@ On **Adjust plan**, select an allocation, destination class meeting and local st
 For a working demonstration on the Tuesday/Thursday section: select the `lesson-17` block on `2026-11-26` at `10:00`, choose the same date and start `10:35`. That overlaps `lesson-18`; the planner can relocate the two blocks while respecting the curriculum, available time, and fixed assessments. Save the version, export CSV or iCalendar, then restore it from **Plan history**.
 
 This is bounded search, **not** a global scheduling optimizer: failing to find a rearrangement means only that no solution was found within the search limits. Fixed assessment allocations are protected; no required content is shortened, optional work silently deferred, or changed version accepted without teacher approval. The proposal and its source version remain in SQLite for review and audit.
+
+## v0.6 — Multi-week capacity outlook
+
+The weekly timetable includes a term-wide capacity navigator. Each school week lists available instructional minutes, accepted (or explicitly previewed) allocations, remaining buffer, and the number of fully closed scheduled meetings. Select a week to inspect its exact lesson blocks. Negative buffer is shown explicitly rather than hidden. The navigator derives from the section's generated local-date sessions and does not independently subtract overlapping closures.
+
+This is planning visibility, not an optimizer or automatic approval. No external integration is connected.
