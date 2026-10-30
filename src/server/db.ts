@@ -2,9 +2,10 @@ import {DatabaseSync} from 'node:sqlite';
 import {mkdirSync} from 'node:fs';
 import {dirname,resolve} from 'node:path';
 import {randomUUID} from 'node:crypto';
-import {assertLocalDate,assertTime,minute,type Term,type Section,type CalendarException,type Disruption,type Unit,type Lesson,type Anchor,type PlanVersion,type Proposal,type PlanResult} from '../shared/domain.js';
+import {assertLocalDate,assertTime,minute,type Term,type Section,type CalendarException,type Disruption,type Unit,type Lesson,type Anchor,type PlanVersion,type Proposal,type PlanResult,type ManualProposal,type Allocation,time} from '../shared/domain.js';
 import {generateSessions,capacitySummary,validatePattern} from './calendar.js';
 import {schedule,optionalRecovery} from './schedule.js';
+import {validatePlan} from './validate-plan.js';
 
 const j=(x:unknown)=>JSON.stringify(x);
 const parse=<T>(v:unknown):T=>JSON.parse(String(v)) as T;
@@ -28,6 +29,8 @@ CREATE TABLE IF NOT EXISTS disruptions(id TEXT PRIMARY KEY,section_id TEXT NOT N
 CREATE TABLE IF NOT EXISTS plan_versions(id TEXT PRIMARY KEY,section_id TEXT NOT NULL REFERENCES sections(id) ON DELETE CASCADE,version_no INTEGER NOT NULL,created_at TEXT NOT NULL,source_version_id TEXT,reason TEXT NOT NULL,curriculum_revision INTEGER NOT NULL,snapshot_json TEXT NOT NULL,UNIQUE(section_id,version_no));
 CREATE TABLE IF NOT EXISTS allocations(id TEXT PRIMARY KEY,plan_version_id TEXT NOT NULL REFERENCES plan_versions(id) ON DELETE CASCADE,lesson_id TEXT NOT NULL,session_id TEXT NOT NULL,date TEXT NOT NULL,start TEXT NOT NULL,end TEXT NOT NULL,minutes INTEGER NOT NULL CHECK(minutes>0),UNIQUE(plan_version_id,id));
 CREATE TABLE IF NOT EXISTS proposals(id TEXT PRIMARY KEY,section_id TEXT NOT NULL REFERENCES sections(id) ON DELETE CASCADE,source_version_id TEXT NOT NULL REFERENCES plan_versions(id),curriculum_revision INTEGER NOT NULL,created_at TEXT NOT NULL,status TEXT NOT NULL CHECK(status IN('draft','accepted','rejected')),strategy TEXT NOT NULL,payload_json TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS manual_proposals(id TEXT PRIMARY KEY,section_id TEXT NOT NULL REFERENCES sections(id) ON DELETE CASCADE,source_version_id TEXT NOT NULL REFERENCES plan_versions(id),curriculum_revision INTEGER NOT NULL,created_at TEXT NOT NULL,status TEXT NOT NULL CHECK(status IN('draft','accepted','rejected')),payload_json TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS manual_decisions(id TEXT PRIMARY KEY,manual_proposal_id TEXT NOT NULL REFERENCES manual_proposals(id),decision TEXT NOT NULL CHECK(decision IN('accept','reject')),at TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS teacher_decisions(id TEXT PRIMARY KEY,proposal_id TEXT NOT NULL REFERENCES proposals(id),decision TEXT NOT NULL,at TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS audit_events(id TEXT PRIMARY KEY,org_id TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,kind TEXT NOT NULL,entity_id TEXT NOT NULL,at TEXT NOT NULL,detail TEXT NOT NULL);
 `);
@@ -60,8 +63,59 @@ function writeVersion(db:DatabaseSync,sectionId:string,result:PlanResult,reason:
 export function generateBaseline(db:DatabaseSync,sectionId:string){ensureSection(db,sectionId);
  return transact(db,()=>{const result=schedule(lessons(db),sessionsFor(db,sectionId),anchors(db),sectionId);if(!result.feasible)return {result,version:null};const prior=activeVersion(db,sectionId);const ver=writeVersion(db,sectionId,result,'Teacher-generated baseline',prior?.id||null,disruptions(db,sectionId,true).map(d=>d.id));return {result,version:ver};});
 }
-export function getState(db:DatabaseSync){const t=term(db),ss=sections(db);return {organization:{name:'Northstar CTE — synthetic demo',demo:true},term:t,sections:ss.map(s=>{const ses=sessionsFor(db,s.id);return {...s,sessions:ses,capacity:capacitySummary(ses),activePlan:activeVersion(db,s.id),versions:versions(db,s.id),proposals:proposals(db,s.id),disruptions:disruptions(db,s.id,true)};}),exceptions:exceptions(db),units:units(db),lessons:lessons(db),anchors:anchors(db),audit:rows<any>(db,'SELECT * FROM audit_events ORDER BY at DESC LIMIT 30').map(r=>({id:r.id,kind:r.kind,entityId:r.entity_id,at:r.at,detail:r.detail}))};}
+export function getState(db:DatabaseSync){const t=term(db),ss=sections(db);return {organization:{name:'Northstar CTE — synthetic demo',demo:true},term:t,sections:ss.map(s=>{const ses=sessionsFor(db,s.id);return {...s,sessions:ses,capacity:capacitySummary(ses),activePlan:activeVersion(db,s.id),versions:versions(db,s.id),proposals:proposals(db,s.id),manualProposals:manualProposals(db,s.id),disruptions:disruptions(db,s.id,true)};}),exceptions:exceptions(db),units:units(db),lessons:lessons(db),anchors:anchors(db),audit:rows<any>(db,'SELECT * FROM audit_events ORDER BY at DESC LIMIT 30').map(r=>({id:r.id,kind:r.kind,entityId:r.entity_id,at:r.at,detail:r.detail}))};}
 export function proposals(db:DatabaseSync,sectionId:string):Proposal[]{return rows<any>(db,'SELECT * FROM proposals WHERE section_id=? ORDER BY created_at DESC,id DESC',sectionId).map(r=>({...parse<Proposal>(r.payload_json),status:r.status}));}
+
+export function manualProposals(db:DatabaseSync,sectionId:string):ManualProposal[]{
+ return rows<any>(db,'SELECT * FROM manual_proposals WHERE section_id=? ORDER BY created_at DESC,id DESC',sectionId).map(r=>({...parse<ManualProposal>(r.payload_json),status:r.status}));
+}
+export function previewManualMove(db:DatabaseSync,request:{sectionId:string;allocationId:string;targetSessionId:string;start:string}):ManualProposal{
+ const s=ensureSection(db,request.sectionId),t=term(db),current=activeVersion(db,s.id);
+ if(!current)throw new Error('Generate a baseline before adjusting allocations');
+ if(current.curriculumRevision!==t.revision)throw new Error('Accepted plan is stale; regenerate before making a manual adjustment');
+ if(typeof request.allocationId!=='string'||typeof request.targetSessionId!=='string')throw new Error('Select a valid allocation and session');
+ assertTime(request.start);
+ const original=current.snapshot.result.allocations.find(a=>a.id===request.allocationId);
+ if(!original)throw new Error('Allocation not found in current accepted plan');
+ const sessions=sessionsFor(db,s.id),target=sessions.find(x=>x.id===request.targetSessionId);
+ if(!target)throw new Error('Destination session does not exist for this section');
+ const until=minute(request.start)+original.minutes;
+ if(until>=1440)throw new Error('Allocation cannot extend beyond the school day');
+ const replacement:Allocation={...original,sessionId:target.id,date:target.date,start:request.start,end:time(until)};
+ if(original.sessionId===replacement.sessionId&&original.start===replacement.start)throw new Error('Choose a different time or session for this move');
+ const before=current.snapshot.result;
+ const result:PlanResult={...before,allocations:before.allocations.map(a=>a.id===original.id?replacement:a).sort((a,b)=>a.date.localeCompare(b.date)||a.start.localeCompare(b.start)||a.lessonId.localeCompare(b.lessonId))};
+ const failures=validatePlan(lessons(db),sessions,anchors(db),s.id,result);
+ if(failures.length)throw new Error(`Move is not feasible: ${failures.join('; ')}`);
+ return transact(db,()=>{
+  // Re-check the head while holding a write transaction so the draft has a stable parent.
+  if(activeVersion(db,s.id)?.id!==current.id||term(db).revision!==t.revision)throw new Error('Plan changed during preview; retry');
+  const proposal:ManualProposal={id:uid(),sectionId:s.id,sourceVersionId:current.id,curriculumRevision:t.revision,createdAt:now(),status:'draft',allocationId:original.id,targetSessionId:target.id,start:request.start,result,before:original,after:replacement};
+  db.prepare('INSERT INTO manual_proposals VALUES (?,?,?,?,?,?,?)').run(proposal.id,s.id,current.id,t.revision,proposal.createdAt,'draft',j(proposal));
+  audit(db,'manual.preview',proposal.id,`Proposed moving ${original.lessonId} to ${target.date} ${request.start}`);
+  return proposal;
+ });
+}
+export function decideManualMove(db:DatabaseSync,proposalId:string,decision:'accept'|'reject'){
+ return transact(db,()=>{
+  const record=row<any>(db,'SELECT * FROM manual_proposals WHERE id=?',proposalId);
+  if(!record)throw new Error('Manual proposal not found');
+  if(record.status!=='draft')throw new Error('Manual proposal already decided');
+  const p=parse<ManualProposal>(record.payload_json),current=activeVersion(db,p.sectionId);
+  if(!current||current.id!==p.sourceVersionId||term(db).revision!==p.curriculumRevision)throw new Error('Manual proposal is stale; create a new preview');
+  let version:PlanVersion|null=null;
+  if(decision==='accept'){
+   const failures=validatePlan(lessons(db),sessionsFor(db,p.sectionId),anchors(db),p.sectionId,p.result);
+   if(failures.length)throw new Error(`Manual proposal invalid: ${failures.join('; ')}`);
+   version=writeVersion(db,p.sectionId,p.result,`Teacher moved ${p.before.lessonId} to ${p.after.date} ${p.after.start}`,current.id,current.snapshot.disruptions);
+  }
+  db.prepare('UPDATE manual_proposals SET status=? WHERE id=?').run(decision==='accept'?'accepted':'rejected',proposalId);
+  db.prepare('INSERT INTO manual_decisions VALUES (?,?,?,?)').run(uid(),proposalId,decision,now());
+  audit(db,`manual.${decision}`,proposalId,`${p.before.lessonId} ${p.before.date} to ${p.after.date}`);
+  return {decision,version};
+ });
+}
+
 function compare(before:PlanResult,after:PlanResult){
  const per=(r:PlanResult,id:string)=>r.allocations.filter(a=>a.lessonId===id).map(a=>`${a.date}/${a.start}-${a.end}`).join('|');
  const ids=new Set([...before.allocations.map(a=>a.lessonId),...after.allocations.map(a=>a.lessonId)]);
@@ -112,8 +166,8 @@ export function restore(db:DatabaseSync,sectionId:string,versionId:string){ensur
  const keep=new Set(candidate.snapshot.disruptions);
  for(const d of disruptions(db,sectionId))db.prepare('UPDATE disruptions SET active=? WHERE id=?').run(keep.has(d.id)?1:0,d.id);
  // Revalidate the historical allocations against the restored calendar and present curriculum.
- const refreshed=sessionsFor(db,sectionId);const recomputed=schedule(lessons(db),refreshed,anchors(db),sectionId,candidate.snapshot.result.deferredLessonIds);
- if(!recomputed.feasible||j(recomputed.allocations)!==j(candidate.snapshot.result.allocations))throw new Error('Historical plan cannot be restored faithfully');
+ const refreshed=sessionsFor(db,sectionId);const validation=validatePlan(lessons(db),refreshed,anchors(db),sectionId,candidate.snapshot.result);
+ if(validation.length)throw new Error('Historical plan cannot be restored faithfully: '+validation.join('; '));
  return writeVersion(db,sectionId,candidate.snapshot.result,`Restored version ${candidate.versionNo}`,current.id,candidate.snapshot.disruptions);
  });
 }
@@ -180,6 +234,13 @@ export function patchAnchor(db:DatabaseSync,sectionId:string,lessonId:string,dat
 export function resetDemo(db:DatabaseSync){return transact(db,()=>{
  // Hard scope boundary: only synthetic demo organization may be reset.
  const org=row<any>(db,"SELECT * FROM organizations WHERE id='demo'");if(org&&!org.demo)throw new Error('Reset denied for non-demo organization');
+ // SQLite FKs for proposal source versions intentionally retain history across normal plan changes.
+ // A scoped demo reset must remove dependent decisions/drafts before deleting plan versions.
+ const demoSection="section_id IN (SELECT sections.id FROM sections JOIN terms ON sections.term_id=terms.id WHERE terms.org_id='demo')";
+ db.exec(`DELETE FROM manual_decisions WHERE manual_proposal_id IN (SELECT id FROM manual_proposals WHERE ${demoSection});`);
+ db.exec(`DELETE FROM teacher_decisions WHERE proposal_id IN (SELECT id FROM proposals WHERE ${demoSection});`);
+ db.exec(`DELETE FROM manual_proposals WHERE ${demoSection};`);
+ db.exec(`DELETE FROM proposals WHERE ${demoSection};`);
  db.prepare("DELETE FROM organizations WHERE id='demo'").run();
  db.prepare('INSERT INTO organizations VALUES (?,?,?)').run('demo','Northstar CTE — synthetic demo',1);
  const t:Term={id:'term-fall',orgId:'demo',name:'Fall CTE Skills — six-week demo',startDate:'2026-10-19',endDate:'2026-11-29',timezone:'America/New_York',revision:0};
