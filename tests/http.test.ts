@@ -56,6 +56,30 @@ test('HTTP teacher adjustment previews, rejects invalid moves, accepts and expor
  const ics=await (await req('/api/export/cte-tt.ics')).text();
  assert.match(ics,/DTSTART:20261126T104000/);
 });
+test('HTTP occupied-slot rearrangement produces a reviewable versioned plan',async()=>{
+ assert.equal((await post('/api/reset',{})).status,200);
+ const state=await (await req('/api/state')).json() as any;
+ const section=state.sections.find((x:any)=>x.id==='cte-tt');
+ const before=section.activePlan;
+ const source=before.snapshot.result.allocations.find((x:any)=>x.lessonId==='lesson-17'&&x.date==='2026-11-26');
+ const target=before.snapshot.result.allocations.find((x:any)=>x.lessonId==='lesson-18');
+ const invalid=await post('/api/manual-moves/preview',{sectionId:'cte-tt',allocationId:source.id,targetSessionId:target.sessionId,start:target.start});
+ assert.equal(invalid.status,400);
+ const response=await post('/api/manual-moves/rearrange',{sectionId:'cte-tt',allocationId:source.id,targetSessionId:target.sessionId,start:target.start});
+ assert.equal(response.status,200);
+ const proposal=await response.json() as any;
+ assert.ok(proposal.changes.length>=2);assert.equal(proposal.status,'draft');
+ const unchanged=await (await req('/api/state')).json() as any;
+ assert.equal(unchanged.sections.find((x:any)=>x.id==='cte-tt').activePlan.id,before.id);
+ assert.equal((await post(`/api/manual-moves/${proposal.id}/accept`,{})).status,200);
+ const after=await (await req('/api/state')).json() as any;
+ const version=after.sections.find((x:any)=>x.id==='cte-tt').activePlan;
+ assert.equal(version.versionNo,before.versionNo+1);
+ const csv=await (await req('/api/export/cte-tt.csv')).text();
+ assert.ok(csv.includes(`2026-11-26,${target.start},11:10`));
+ const ics=await (await req('/api/export/cte-tt.ics')).text();
+ assert.ok(ics.includes('DTSTART:20261126T103500'));
+});
 test('HTTP rejects cross-site mutation requests and invalid input' ,async()=>{
  const denied=await req('/api/reset',{method:'POST',headers:{Origin:'https://untrusted.example'}});assert.equal(denied.status,400);
  const bad=await post('/api/calendar/exception',{sectionId:'cte-tt',date:'2030-01-01',kind:'holiday',reason:'Out of term'});assert.equal(bad.status,400);
