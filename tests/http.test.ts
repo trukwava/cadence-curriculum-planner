@@ -31,7 +31,32 @@ test('HTTP calendar preview is side-effect-free; accepting updates versions and 
  const ics=await (await req('/api/export/cte-tt.ics')).text();assert.equal((ics.match(/BEGIN:VEVENT/g)||[]).length,active.snapshot.result.allocations.length);assert.match(ics,/DTSTART:20261119T/);assert.match(ics,/X-WR-TIMEZONE:America\/New_York/);
  assert.ok(active.snapshot.result.allocations.every((a:any)=>csv.includes(`${a.date},${a.start},${a.end}`)));
 });
-test('HTTP rejects cross-site mutation requests and invalid input',async()=>{
+test('HTTP teacher adjustment previews, rejects invalid moves, accepts and exports new times',async()=>{
+ const st=await (await req('/api/state')).json() as any;
+ const current=st.sections.find((s:any)=>s.id==='cte-tt').activePlan;
+ // Existing disruption is accepted in preceding test: choose an available block and an unoccupied interval.
+ const chosen=current.snapshot.result.allocations.find((a:any)=>a.lessonId==='lesson-16');
+ assert.ok(chosen);
+ const invalid=await post('/api/manual-moves/preview',{sectionId:'cte-tt',allocationId:chosen.id,targetSessionId:'invalid',start:'10:00'});
+ assert.equal(invalid.status,400);
+ // Reset to a predictable fixture for the positive HTTP flow.
+ assert.equal((await post('/api/reset',{})).status,200);
+ const baseline=await (await req('/api/state')).json() as any;
+ const start=baseline.sections.find((s:any)=>s.id==='cte-tt').activePlan;
+ const block=start.snapshot.result.allocations.find((a:any)=>a.lessonId==='lesson-18');
+ const previewResponse=await post('/api/manual-moves/preview',{sectionId:'cte-tt',allocationId:block.id,targetSessionId:block.sessionId,start:'10:40'});
+ assert.equal(previewResponse.status,200);
+ const preview=await previewResponse.json() as any;
+ assert.equal(preview.after.end,'11:05');
+ assert.equal((await post(`/api/manual-moves/${preview.id}/accept`,{})).status,200);
+ const revised=await (await req('/api/state')).json() as any;
+ assert.equal(revised.sections.find((s:any)=>s.id==='cte-tt').activePlan.versionNo,start.versionNo+1);
+ const csv=await (await req('/api/export/cte-tt.csv')).text();
+ assert.match(csv,/2026-11-26,10:40,11:05/);
+ const ics=await (await req('/api/export/cte-tt.ics')).text();
+ assert.match(ics,/DTSTART:20261126T104000/);
+});
+test('HTTP rejects cross-site mutation requests and invalid input' ,async()=>{
  const denied=await req('/api/reset',{method:'POST',headers:{Origin:'https://untrusted.example'}});assert.equal(denied.status,400);
  const bad=await post('/api/calendar/exception',{sectionId:'cte-tt',date:'2030-01-01',kind:'holiday',reason:'Out of term'});assert.equal(bad.status,400);
  const state=await (await req('/api/state')).json() as any;assert.equal(state.sections.length,2);
