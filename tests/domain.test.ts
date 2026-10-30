@@ -51,3 +51,17 @@ test('allocation minutes never exceed free session intervals',()=>{
  const usedBySession=new Map<string,number>();for(const a of f.recovery.allocations)usedBySession.set(a.sessionId,(usedBySession.get(a.sessionId)||0)+a.minutes);
  for(const s of f.sessions)assert.ok((usedBySession.get(s.id)||0)<=s.availableMinutes);
 });
+
+test('bounded chain rearrangement relocates two overlaps without shortening required blocks',async()=>{
+ const {findRearrangement}=await import('../src/server/rearrange.js');
+ const lessons=['a','b','c'].map((id,i)=>({id,unitId:'u',title:id,durationMinutes:20,required:true,splitAllowed:false,mergeAllowed:false,priority:i+1,prerequisites:[]}));
+ const sessions=['2026-11-02','2026-11-04'].map((date,i)=>({id:'s'+i,sectionId:'section',date,start:'09:00',end:'10:00',originalMinutes:60,availableMinutes:60,segments:[{start:'09:00',end:'10:00',minutes:60}],exclusions:[],extra:false}));
+ const allocations=['a','b','c'].map((id,i)=>({id:'alloc-'+id,lessonId:id,sessionId:'s0',date:'2026-11-02',start:['09:00','09:20','09:40'][i]!,end:['09:20','09:40','10:00'][i]!,minutes:20}));
+ const plan={feasible:true,allocations,deferredLessonIds:[],unsatisfied:[],errors:[],neededMinutes:60,capacityMinutes:120,requiredMinutes:60,optionalMinutes:0,shortageMinutes:0,usedMinutes:60,remainingMinutes:60};
+ const r=findRearrangement(plan,lessons,sessions,[],'section','alloc-a','s0','09:30');
+ assert.ok(r);assert.equal(r.changes.length,3);
+ assert.equal(r.result.allocations.find(a=>a.id==='alloc-a')?.start,'09:30');
+ assert.deepEqual(r.result.allocations.map(a=>a.id).sort(),allocations.map(a=>a.id).sort());
+ const {validatePlan}=await import('../src/server/validate-plan.js');
+ assert.deepEqual(validatePlan(lessons,sessions,[],'section',r.result),[]);
+});
