@@ -1,4 +1,4 @@
-# Cadence Curriculum Planner — Northstar demo v0.5
+# Cadence Curriculum Planner — Northstar demo v0.5.1
 
 A **working local-only synthetic demo** for a fictional high-school CTE teacher. It calculates usable instructional minutes and proposes deterministic, reviewable recovery plans after unexpected schedule disruptions. Nothing connects to a real school system. No LLM, credentials, subscription, or paid service is necessary.
 
@@ -69,10 +69,10 @@ Try editing a lesson duration under **Curriculum**. This increments the curricul
 
 ## v0.5 weekly board and verification
 
-- The weekly board shows all five weekdays, current section sessions, excluded segments, and real allocation blocks, plus a readable list for short blocks. Week navigation operates on school date-only values and is stable over November daylight saving.
+- The weekly board shows all five weekdays, current section sessions, excluded segments, and real allocation blocks, plus a readable list for short blocks. Week navigation operates on school date-only values and is stable over November daylight saving. Alternating-week parity follows Monday–Sunday school weeks even when the term starts midweek.
 - Native HTML drag/drop creates a **preview only**. A backend error on a collision triggers the bounded multi-block rearranger; unrelated constraint failures are surfaced without trying to defeat them. Use block selection and Choose destination on touch and keyboard devices.
 - Draft proposals are persisted, version-checked, and highlighted separately from accepted allocations. The teacher can compare before/after, approve or discard; exports always reference the accepted plan.
-- Node test suite: **34 passing tests** at packaging time, including four new local-date and snapping cases. A headless Chromium **offline visualization** loaded the real frontend against a saved synthetic state and verified week navigation, desktop/mobile overflow, keyboard selections, drag preview rendering, and before/after toggles with no JS errors. Chromium was prohibited from navigating to local HTTP by the execution sandbox, so this is **not** a connected end-to-end browser acceptance test; API and state transitions are separately tested.
+- Node test suite: **36 passing tests** at packaging time, including four new local-date and snapping cases. A headless Chromium **offline visualization** loaded the real frontend against a saved synthetic state and verified week navigation, desktop/mobile overflow, keyboard selections, drag preview rendering, and before/after toggles with no JS errors. Chromium was prohibited from navigating to local HTTP by the execution sandbox, so this is **not** a connected end-to-end browser acceptance test; API and state transitions are separately tested.
 - Browser-only drag/drop is not designed for touch; the accessible selection and editor flow is an intentional alternative. No automatic acceptance, cross-organization access, production auth, or production calendar integrations have been implemented.
 
 ## Limitations / next iteration
