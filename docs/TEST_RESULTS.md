@@ -42,3 +42,7 @@ Added a 3-allocation two-overlap pure-engine fixture, a persistent seed-scenario
 - 36 local automated tests pass. A midweek-start alternating schedule correctly resets parity at Monday, not seven days after the first day.
 - A seeded sweep of 100 overlapping closure sets compares exact remaining instructional minutes and exclusions against an independent minute-by-minute oracle. Duplicate closures do not double-subtract.
 - This patch contains the corrected weekly browser module serving route and its HTTP assertion. GitHub Actions status must be checked separately.
+
+## v0.5.2 CSV safety check
+
+- 37 tests passed. Added an HTTP test for a teacher-created lesson title beginning with a spreadsheet formula: the CSV export quotes internal double-quotes and prefixes an apostrophe so spreadsheet readers treat it as text. Demo reset still restores the original title.
