@@ -69,6 +69,41 @@ export function proposals(db:DatabaseSync,sectionId:string):Proposal[]{return ro
 export function manualProposals(db:DatabaseSync,sectionId:string):ManualProposal[]{
  return rows<any>(db,'SELECT * FROM manual_proposals WHERE section_id=? ORDER BY created_at DESC,id DESC',sectionId).map(r=>({...parse<ManualProposal>(r.payload_json),status:r.status}));
 }
+/** Read-only candidate search: all suggestions pass full-plan validation. */
+export function suggestManualMoves(db:DatabaseSync,sectionId:string,allocationId:string){
+ const sec=ensureSection(db,sectionId),current=activeVersion(db,sec.id),t=term(db);
+ if(!current||current.curriculumRevision!==t.revision)throw new Error('Current plan is missing or stale; regenerate baseline');
+ const base=current.snapshot.result,original=base.allocations.find(a=>a.id===allocationId);
+ if(!original)throw new Error('Allocation not found in accepted plan');
+ const allSessions=sessionsFor(db,sec.id),allLessons=lessons(db),allAnchors=anchors(db);
+ const candidates:{sessionId:string;date:string;start:string;end:string;minutes:number;dayShift:number}[]=[];
+ const toOrdinal=(date:string)=>Math.trunc(Date.parse(date+'T12:00:00Z')/86400000);
+ for(const session of allSessions){
+  for(const segment of session.segments){
+   const occupied=base.allocations.filter(a=>a.id!==original.id&&a.sessionId===session.id)
+    .map(a=>({start:minute(a.start),end:minute(a.end)})).sort((a,b)=>a.start-b.start);
+   let cursor=minute(segment.start);
+   for(const block of [...occupied,{start:minute(segment.end),end:minute(segment.end)}]){
+    if(block.start-cursor>=original.minutes){
+     for(let startMinute=cursor;startMinute+original.minutes<=block.start;startMinute+=5){
+      const start=time(startMinute),end=time(startMinute+original.minutes);
+      if(session.id!==original.sessionId||start!==original.start){
+       const replacement={...original,sessionId:session.id,date:session.date,start,end};
+       const result={...base,allocations:base.allocations.map(a=>a.id===original.id?replacement:a)};
+       if(!validatePlan(allLessons,allSessions,allAnchors,sec.id,result).length){
+        candidates.push({sessionId:session.id,date:session.date,start,end,minutes:original.minutes,dayShift:toOrdinal(session.date)-toOrdinal(original.date)});
+       }
+      }
+     }
+    }
+    cursor=Math.max(cursor,block.end);
+   }
+  }
+ }
+ candidates.sort((a,b)=>Math.abs(a.dayShift)-Math.abs(b.dayShift)||a.date.localeCompare(b.date)||a.start.localeCompare(b.start));
+ return {sourceVersionId:current.id,allocationId,original:{date:original.date,start:original.start,end:original.end},suggestions:candidates.slice(0,12),checkedSessions:allSessions.length};
+}
+
 export function previewManualMove(db:DatabaseSync,request:{sectionId:string;allocationId:string;targetSessionId:string;start:string}):ManualProposal{
  const s=ensureSection(db,request.sectionId),t=term(db),current=activeVersion(db,s.id);
  if(!current)throw new Error('Generate a baseline before adjusting allocations');
