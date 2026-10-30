@@ -75,3 +75,7 @@ Try editing a lesson duration under **Curriculum**. This increments the curricul
 - The included tests cover deterministic core, HTTP routes, manual move workflow, and version restoration; Chromium GUI navigation was blocked by this execution environment, so a graphical browser acceptance test has not passed. See `docs/TEST_RESULTS.md`.
 
 See `docs/PRODUCT_BRIEF.md`, `docs/ARCHITECTURE.md`, `docs/PILOT_PLAN.md`, and `docs/TEST_RESULTS.md`.
+
+### v0.3 — Validated slot suggestions
+
+Open **Adjust plan**, choose a lesson block, then select **Find feasible slots**. The server searches available meeting intervals in five-minute increments, validates each candidate against the entire accepted timetable (including prerequisites, exclusions, full lesson durations, and assessment anchors), and returns up to twelve options ordered by day proximity. Selecting an option fills the existing manual preview form; it does not save or approve any change. A teacher must preview and explicitly accept a proposed move before a new plan version is created. Suggestions are computed against the current version and are rejected when a curriculum revision makes it stale. The tool does not perform multi-lesson swaps or guarantee all possible reconfigurations.
