@@ -49,7 +49,7 @@ async function handler(req:IncomingMessage,res:ServerResponse){try{
  if(req.method==='POST'&&match)return json(res,200,decide(db,match[1]!,match[2] as 'accept'|'reject'));
  if(req.method==='POST'&&pathname==='/api/restore'){const x=await body(req);return json(res,200,restore(db,String(x.sectionId||''),String(x.versionId||'')));}
  if(req.method==='GET'){
-  const file={'/':'index.html','/index.html':'index.html','/styles.css':'styles.css','/dist/app.js':'dist/app.js'}[pathname];
+  const file={'/':'index.html','/index.html':'index.html','/styles.css':'styles.css','/dist/app.js':'dist/app.js','/dist/week.js':'dist/week.js'}[pathname];
   if(file){const ct=file.endsWith('.js')?'application/javascript':file.endsWith('.css')?'text/css':'text/html';return textResponse(res,readFileSync(resolve(root,'public',file)).toString('utf-8'),ct+'; charset=utf-8');}
  }
  json(res,404,{error:'Unknown endpoint'});
