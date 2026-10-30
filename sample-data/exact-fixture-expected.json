@@ -1,0 +1,17 @@
+{
+  "fixture": "six sessions with overlapping closure on one 50-minute meeting",
+  "term": {"startDate":"2026-10-26","endDate":"2026-11-06","timezone":"America/New_York"},
+  "sessionCount":6,
+  "originalMinutes":300,
+  "closureRecords":[
+    {"date":"2026-10-28","start":"09:00","end":"09:50","reason":"Building closure"},
+    {"date":"2026-10-28","start":"09:00","end":"09:50","reason":"Duplicate staff-day closure"}
+  ],
+  "incrementalMinutesRemovedByClosure":[50,0],
+  "actualCapacityMinutes":250,
+  "requiredMinutes":240,
+  "optionalMinutes":40,
+  "demandIfRetainedMinutes":280,
+  "shortageMinutes":30,
+  "recovery":{"deferOptionalMinutes":40,"requiredAllocatedMinutes":240,"remainingBufferMinutes":10,"feasible":true}
+}

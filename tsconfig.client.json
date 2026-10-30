@@ -1,0 +1,1 @@
+{"compilerOptions":{"target":"ES2022","module":"ES2022","moduleResolution":"Bundler","strict":true,"noUncheckedIndexedAccess":true,"skipLibCheck":true,"outDir":"public/dist","rootDir":"src/client","lib":["ES2022","DOM"]},"include":["src/client/**/*.ts"]}

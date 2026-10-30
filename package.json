@@ -1,0 +1,15 @@
+{
+  "name": "curriculum-recovery",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {"node": ">=22.13"},
+  "scripts": {
+    "build": "tsc -p tsconfig.server.json && tsc -p tsconfig.client.json",
+    "start": "node dist/server/src/server/server.js",
+    "test": "npm run build && node --test dist/server/tests/*.test.js",
+    "check": "npm run test",
+    "dev": "npm run build && npm start"
+  },
+  "devDependencies": {"typescript": "^5.8.3", "@types/node": "^22.0.0"}
+}
