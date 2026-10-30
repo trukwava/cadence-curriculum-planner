@@ -26,3 +26,11 @@
 ## v0.4 regression extension (2026-10-30)
 
 Added a 3-allocation two-overlap pure-engine fixture, a persistent seed-scenario occupied-slot rearrangement, approval/rejection/restore/reload checks, stale-curriculum and fixed-anchor constraints, plus a full HTTP preview-approval-export scenario. Run `npm test` to rebuild the app and execute the complete suite. This check is independent of CI and browser screenshot coverage.
+
+## v0.5 verification — 2026-10-30
+
+- 34 Node tests passed, including weekday labels over DST, invalid school dates, segment-aware drag placement and slot clamping.
+- Compiled both browser and server TypeScript successfully.
+- HTTP local server health returned `ok: true`, mode `synthetic-demo`.
+- Offline Chromium (local state injection due sandbox blocking localhost page navigation) rendered desktop/mobile weekly views, selected lesson and destination with keyboard-friendly buttons, exercised drag into occupied slot, and displayed the teacher-reviewable two-block proposal with accepted/proposed toggle; zero uncaught JavaScript errors.
+- Full HTTP browser interaction against a running server remains unverified due browser sandbox restrictions. The localhost HTTP API is tested independently in Node.
