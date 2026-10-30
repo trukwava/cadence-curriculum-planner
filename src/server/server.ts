@@ -8,7 +8,8 @@ const root=resolve(fileURLToPath(new URL('../../../../',import.meta.url)));
 const db=openDb(process.env.DB_PATH||resolve(root,'data/demo.sqlite'));initializeDemo(db);
 const host=process.env.HOST||'127.0.0.1';const port=Number(process.env.PORT||4173);
 function json(res:ServerResponse,status:number,body:unknown){const bytes=Buffer.from(JSON.stringify(body));res.writeHead(status,{'Content-Type':'application/json; charset=utf-8','Content-Length':bytes.length,'Cache-Control':'no-store','X-Content-Type-Options':'nosniff'});res.end(bytes);}
-function csvCell(x:string):string{return /[",\r\n]/.test(x)?`"${x.replaceAll('"','""')}"`:x;}
+// Spreadsheet applications may execute leading =,+,-,@ as formulas, including after whitespace.
+function csvCell(x:string):string{const safe=/^[\s\u0000-\u001f]*[=+\-@]/.test(x)?"'"+x:x;return /[",\r\n]/.test(safe)?`"${safe.replaceAll('"','""')}"`:safe;}
 function exportCSV(sectionId:string){ensureSection(db,sectionId);const p=activeVersion(db,sectionId);if(!p)throw new Error('No accepted plan');const names=new Map(lessons(db).map(l=>[l.id,l.title]));const lines=[['Date','Start (school local)','End (school local)','Timezone','Section','Lesson','Minutes','Version'],...p.snapshot.result.allocations.map(a=>[a.date,a.start,a.end,term(db).timezone,sectionId,names.get(a.lessonId)||a.lessonId,String(a.minutes),String(p.versionNo)])];return lines.map(line=>line.map(csvCell).join(',')).join('\r\n')+'\r\n';}
 const icsEscape=(s:string)=>s.replaceAll('\\','\\\\').replaceAll(';','\\;').replaceAll(',','\\,').replaceAll('\n','\\n');
 function exportICS(sectionId:string){ensureSection(db,sectionId);const p=activeVersion(db,sectionId);if(!p)throw new Error('No accepted plan');const names=new Map(lessons(db).map(l=>[l.id,l.title]));const compact=(s:string)=>s.replaceAll('-','').replaceAll(':','');const nowUTC=new Date().toISOString().replaceAll('-','').replaceAll(':','').replace(/\.\d{3}/,'');
