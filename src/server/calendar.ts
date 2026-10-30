@@ -11,10 +11,12 @@ export function generateSessions(term:Term,section:Section,exceptions:CalendarEx
   const dayCount=dateOrdinal(term.endDate)-dateOrdinal(term.startDate);
   if(dayCount<0||dayCount>730)throw new Error('Term must be 1–731 days');
   const specs:{id:string;date:string;start:string;end:string;extra:boolean}[]=[];
+  // Parity counts Monday–Sunday school weeks, even when a term begins midweek.
+  const startWeekday=(new Date(`${term.startDate}T12:00:00Z`).getUTCDay()+6)%7;
   for(let offset=0;offset<=dayCount;offset++){
     const date=addDays(term.startDate,offset);
     const weekday=new Date(`${date}T12:00:00Z`).getUTCDay();
-    const week=Math.floor(offset/7);
+    const week=Math.floor((offset+startWeekday)/7);
     for(const p of section.patterns){
       if(!p.days.includes(weekday) || (p.parity!=='all'&&((week%2===0?'odd':'even')!==p.parity)))continue;
       const start=minute(p.start), end=start+p.durationMinutes;
