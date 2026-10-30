@@ -21,3 +21,8 @@
 - New regression verifies bounded, read-only candidate suggestions; each returned option can be passed through the existing full-plan manual preview validator.
 - Suggestion search checks five-minute increments and rejects stale accepted versions.
 - Graphical browser layout and GitHub Actions status were not verified in this run.
+
+
+## v0.4 regression extension (2026-10-30)
+
+Added a 3-allocation two-overlap pure-engine fixture, a persistent seed-scenario occupied-slot rearrangement, approval/rejection/restore/reload checks, stale-curriculum and fixed-anchor constraints, plus a full HTTP preview-approval-export scenario. Run `npm test` to rebuild the app and execute the complete suite. This check is independent of CI and browser screenshot coverage.
