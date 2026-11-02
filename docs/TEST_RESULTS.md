@@ -53,3 +53,11 @@ Added a 3-allocation two-overlap pure-engine fixture, a persistent seed-scenario
 - `node --test dist/server/tests/*.test.js`: **39 passed, 0 failed**.
 - Weekly summary tests include a daylight-saving boundary, closures, empty weeks, and an over-capacity week.
 - Real browser-to-server acceptance remains unverified in this iteration.
+
+
+### v0.7 recovery optimizer
+
+- Local verification: TypeScript compilation and 42 tests passed, 0 failed (Node 22 with locally supplied Node typings).
+- Added regression tests for the 250-minute fixture, protected optional prerequisites of required lessons, and read-only SQLite recovery analysis.
+- API smoke test on the seeded demo returned one feasible option from four evaluated subsets; accepted plan is not modified.
+- Full graphical browser-to-server acceptance and current GitHub Actions status remain unverified.
