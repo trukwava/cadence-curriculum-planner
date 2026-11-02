@@ -7,6 +7,7 @@ import {generateSessions,capacitySummary,validatePattern} from './calendar.js';
 import {schedule,optionalRecovery} from './schedule.js';
 import {validatePlan} from './validate-plan.js';
 import {findRearrangement} from './rearrange.js';
+import {rankRecoveryOptions} from './recovery-options.js';
 
 const j=(x:unknown)=>JSON.stringify(x);
 const parse=<T>(v:unknown):T=>JSON.parse(String(v)) as T;
@@ -179,6 +180,17 @@ function compare(before:PlanResult,after:PlanResult){
  const ids=new Set([...before.allocations.map(a=>a.lessonId),...after.allocations.map(a=>a.lessonId)]);
  const movedLessonIds=[...ids].filter(id=>per(before,id)!==per(after,id));
  return {movedLessonIds,affectedMinutes:after.allocations.filter(a=>movedLessonIds.includes(a.lessonId)).reduce((n,a)=>n+a.minutes,0),deferredLessonIds:after.deferredLessonIds};
+}
+/** Read-only recovery analysis; never changes plan versions or drafts. */
+export function analyzeRecovery(db:DatabaseSync,request:{sectionId:string;date:string;start:string;end:string;reason:string}){
+ const s=ensureSection(db,request.sectionId),t=term(db),current=activeVersion(db,s.id);
+ if(!current||current.curriculumRevision!==t.revision)throw new Error('Accepted plan is missing or stale');
+ assertLocalDate(request.date);assertTime(request.start);assertTime(request.end);
+ if(request.date<t.startDate||request.date>t.endDate||minute(request.start)>=minute(request.end))throw new Error('Invalid disruption interval');
+ const ses=sessionsFor(db,s.id);
+ if(!ses.some(x=>x.date===request.date&&x.segments.some(y=>Math.min(minute(y.end),minute(request.end))>Math.max(minute(y.start),minute(request.start)))))throw new Error('Disruption does not remove available instructional time');
+ const d:Disruption={id:'analysis-only',sectionId:s.id,date:request.date,start:request.start,end:request.end,reason:String(request.reason||'Recovery analysis'),active:true};
+ return {sourceVersionId:current.id,sectionId:s.id,disruption:d,...rankRecoveryOptions(lessons(db),sessionsFor(db,s.id,[d]),anchors(db),s.id,current.snapshot.result)};
 }
 export function previewDisruption(db:DatabaseSync,request:{sectionId:string;date:string;start:string;end:string;reason:string;deferredLessonIds?:string[]}){
  const s=ensureSection(db,request.sectionId),t=term(db);assertLocalDate(request.date);assertTime(request.start);assertTime(request.end);
