@@ -103,3 +103,10 @@ This is bounded search, **not** a global scheduling optimizer: failing to find a
 The weekly timetable includes a term-wide capacity navigator. Each school week lists available instructional minutes, accepted (or explicitly previewed) allocations, remaining buffer, and the number of fully closed scheduled meetings. Select a week to inspect its exact lesson blocks. Negative buffer is shown explicitly rather than hidden. The navigator derives from the section's generated local-date sessions and does not independently subtract overlapping closures.
 
 This is planning visibility, not an optimizer or automatic approval. No external integration is connected.
+
+
+## Ranked recovery comparison (v0.7)
+
+Choose **Compare ranked options** in the Recovery Planner to inspect optional-content deferral combinations without changing the accepted timetable. The tool protects required lessons and fixed dates, then ranks feasible alternatives by teacher-priority penalty, number of deferred activities, and minutes affected. **Create reviewable draft** transfers an option to the existing approval workflow; it does not accept the proposal.
+
+The read-only API is `POST /api/recovery/analyze` with JSON such as `{"sectionId":"cte-tt","date":"2026-11-24","start":"10:00","end":"11:15","reason":"Lost class"}`. Responses report explored candidate subsets, whether subset enumeration was exhaustive, ranked options, and failure explanations. Above twelve deferrable optional lessons the search is bounded. Even when subset enumeration is exhaustive, the underlying allocator is greedy: a missing feasible plan is **not** proof that no valid rearrangement exists.
