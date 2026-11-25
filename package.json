@@ -11,5 +11,5 @@
     "check": "npm run test",
     "dev": "npm run build && npm start"
   },
-  "devDependencies": {"typescript": "^5.8.3", "@types/node": "^22.0.0"}
+  "devDependencies": {"typescript": "^7.0.2", "@types/node": "^22.0.0"}
 }
